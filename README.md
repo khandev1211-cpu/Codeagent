@@ -1,4 +1,4 @@
-<![CDATA[<div align="center">
+<div align="center">
   <h1>🤖 Codeagent</h1>
   <p><strong>A terminal-native AI coding agent — describe a goal, watch it build.</strong></p>
 
@@ -24,6 +24,8 @@
 
 Unlike chat-based coding assistants that only print code blocks for you to manually copy, codeagent **acts directly** on your codebase: reading, writing, editing files, searching across your project, and executing shell commands — all driven by an LLM that decides which tools to call and when.
 
+The project's direction is a self-hosted, provider-agnostic agent with the same shape as Claude Code: an agent loop, a growing tool set, and — on the roadmap — a **Skills** system and a **Plugin** system for extending it without touching the core. See [Roadmap](#roadmap) below for what's shipped versus what's planned.
+
 ---
 
 ## Features
@@ -34,9 +36,28 @@ Unlike chat-based coding assistants that only print code blocks for you to manua
 | 🛡️ **Safe by default** | Every destructive action requires confirmation unless you explicitly pass `--yolo`. |
 | 🔄 **Resumable sessions** | Kill the process and pick up exactly where you left off — no context lost. |
 | ↩️ **Undo built in** | Revert the agent's most recent file changes without touching git. |
-| 🔌 **Provider-agnostic core** | Anthropic is the default, but the agent loop itself isn't hardcoded to one API. |
+| 🔌 **Six providers today** | Anthropic, OpenRouter, Mistral, Groq, Cerebras, and Ollama — switch with `--provider` and `--model`. |
+| 🧙 **Guided setup** | `codeagent setup` walks through provider, API key, and model selection. |
 | 📜 **Scriptable** | One-shot mode with proper exit codes — works in CI as well as interactively. |
 | 🧩 **Extensible by design** | Add new tools, providers, or config options without touching the core loop. |
+| 🚧 **Skills & Plugins** | *Planned* — pluggable capability modules and third-party tool packages. Not yet implemented; see Roadmap. |
+
+---
+
+## Roadmap
+
+Where codeagent is headed, and honestly, what's real today versus what's still design/in-progress. (Full internal planning detail lives in `PLAN.md`, which is not part of the published package.)
+
+| Area | Status | Notes |
+|---|---|---|
+| Core agent loop, 6 tools, safety/undo/sessions | ✅ Shipped | Described in full below and in `docs/02`–`docs/08`. |
+| Six provider adapters | ✅ Shipped | `docs/06`. Switch via `--provider`/`--model`. |
+| Setup wizard, `models` / `mistral-models` commands | ✅ Shipped | `codeagent setup`, `codeagent models`. |
+| API key in OS keychain | 🟡 Partial | Setup can *save* a key to the OS keychain, but the runtime doesn't read it back yet — the env var is still required at boot. Fixing the read path is next. |
+| Interactive config manager, usage/cost tracking | 🚧 Planned | Not started. |
+| **Skills system** (pluggable, discoverable capability modules — closer to Claude Code's `SKILL.md`-style progressive-disclosure model than a simple config toggle) | 🚧 Planned | No code yet. Design needs to reconcile with `docs/05`, which currently uses "skills" as a loose synonym for "tools" — that naming will be disambiguated before implementation. |
+| **Plugin system** (third-party tools/providers installable outside this repo) | 🚧 Planned | `docs/11` sketches the shape (a `codeagent-plugin-*` naming convention, tools registered into the same Tool Registry as built-ins, no safety opt-out for plugin tools). Deferred pending the Skills system, since plugins are likely to build on the same discovery/loading mechanism. |
+| Multi-agent / subagents | ❓ Undecided | `docs/01` currently lists this as an explicit v1 non-goal ("one agent, one conversation at a time"). Revisiting this is part of aiming at full Claude Code parity. |
 
 ---
 
@@ -100,11 +121,16 @@ codeagent --resume last          Resume the most recent session for this project
 codeagent --yolo                 Skip destructive-action confirmations for this run
 codeagent --model <name>         Override the configured model for this run
 codeagent --provider <name>      Override the configured provider for this run
+codeagent setup                  Interactive first-time setup wizard (provider, key, model)
+codeagent models [provider]      List available models for a provider (--details for pricing/context)
+codeagent mistral-models         List Mistral models live from your API key
 codeagent undo                   Revert the most recent destructive change
 codeagent undo <ref>             Revert a specific recorded change
 codeagent sessions               List saved sessions for this project
 codeagent config                 Print the fully resolved config (API key redacted)
 ```
+
+> **Setup wizard note:** `codeagent setup` can save your API key to the OS keychain, but that value isn't read back at boot yet — codeagent currently resolves the key from the environment variable only. Until the runtime lookup is wired up (see Roadmap), export the env var (e.g. `ANTHROPIC_API_KEY`) as well.
 
 ### Interactive REPL
 
@@ -377,4 +403,3 @@ Key security guarantees:
 <div align="center">
   <sub>Built with ❤️ for developers who want an AI coding partner that actually does the work.</sub>
 </div>
-]]>
