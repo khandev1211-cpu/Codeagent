@@ -1,5 +1,6 @@
 import { isDestructive } from "../safety/policy.js";
 import { LimitExceededError, ToolError } from "../utils/errors.js";
+import { HOOK_EVENTS, NULL_HOOK_REGISTRY } from "../hooks/index.js";
 
 /**
  * Runs one user turn to completion: send -> tool_use -> execute -> tool_result
@@ -7,7 +8,16 @@ import { LimitExceededError, ToolError } from "../utils/errors.js";
  * hard limit is hit (doc 02 / doc 04).
  */
 export class Orchestrator {
-  constructor({ provider, toolRegistry, confirm, config, logger, contextManager, diffTracker }) {
+  constructor({
+    provider,
+    toolRegistry,
+    confirm,
+    config,
+    logger,
+    contextManager,
+    diffTracker,
+    hookRegistry = NULL_HOOK_REGISTRY,
+  }) {
     this.provider = provider;
     this.toolRegistry = toolRegistry;
     this.confirm = confirm;
@@ -15,6 +25,7 @@ export class Orchestrator {
     this.logger = logger;
     this.contextManager = contextManager;
     this.diffTracker = diffTracker;
+    this.hookRegistry = hookRegistry;
   }
 
   async runTurn({ messages, userInput, system, cwd, onEvent = () => {} }) {
@@ -79,6 +90,26 @@ export class Orchestrator {
 
         onEvent({ type: "tool_call", tool: tool.name, input: block.input });
 
+        const preHook = await this.hookRegistry.run(HOOK_EVENTS.PRE_TOOL_USE, {
+          tool: tool.name,
+          input: block.input,
+          cwd,
+        });
+        if (preHook.blocked) {
+          // Hooks are a veto layer in front of the safety layer, not a
+          // replacement for it — this can only say no, never auto-approve
+          // (PLAN.md Phase 3 / doc 16's explicit "no silent bypass"
+          // requirement). confirm() below never even runs in this branch.
+          onEvent({ type: "tool_blocked", tool: tool.name, reason: preHook.reason });
+          toolResultContent.push({
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: `Blocked by hook: ${preHook.reason}`,
+            is_error: true,
+          });
+          continue;
+        }
+
         const decision = await this.confirm(tool, block.input);
         if (!decision.allowed) {
           onEvent({ type: "tool_declined", tool: tool.name, reason: decision.reason });
@@ -118,10 +149,30 @@ export class Orchestrator {
         }
 
         onEvent({ type: "tool_result", tool: tool.name, result });
+
+        const postHook = await this.hookRegistry.run(HOOK_EVENTS.POST_TOOL_USE, {
+          tool: tool.name,
+          input: block.input,
+          result,
+          cwd,
+        });
+        if (postHook.blocked) {
+          // The action already happened — a PostToolUse hook exiting 2
+          // can't undo it, so this is logged rather than enforced (doc 16).
+          this.logger?.warn(`PostToolUse hook signaled block after execution (ignored): ${tool.name}`, {
+            reason: postHook.reason,
+          });
+        }
+
+        let resultContent = JSON.stringify(result);
+        if (postHook.context) {
+          resultContent += `\n\n[hook context]\n${postHook.context}`;
+        }
+
         toolResultContent.push({
           type: "tool_result",
           tool_use_id: block.id,
-          content: JSON.stringify(result),
+          content: resultContent,
           is_error: result?.ok === false,
         });
       }

@@ -46,18 +46,23 @@ The project's direction is a self-hosted, provider-agnostic agent with the same 
 
 ## Roadmap
 
-Where codeagent is headed, and honestly, what's real today versus what's still design/in-progress. (Full internal planning detail lives in `PLAN.md`, which is not part of the published package.)
+Where codeagent is headed, and honestly, what's real today versus what's still design/in-progress. A full feature-by-feature audit against current Claude Code lives in [`docs/16`](./docs/16-claude-code-parity-audit.md); day-to-day phase planning lives in `PLAN.md` (not part of the published package).
 
 | Area | Status | Notes |
 |---|---|---|
-| Core agent loop, 6 tools, safety/undo/sessions | ✅ Shipped | Described in full below and in `docs/02`–`docs/08`. |
+| Core agent loop, 6 tools, safety/undo/sessions | ✅ Shipped | `docs/02`–`docs/08`. |
 | Six provider adapters | ✅ Shipped | `docs/06`. Switch via `--provider`/`--model`. |
 | Setup wizard, `models` / `mistral-models` commands | ✅ Shipped | `codeagent setup`, `codeagent models`. |
-| API key in OS keychain | 🟡 Partial | Setup can *save* a key to the OS keychain, but the runtime doesn't read it back yet — the env var is still required at boot. Fixing the read path is next. |
-| Interactive config manager, usage/cost tracking | 🚧 Planned | Not started. |
-| **Skills system** (pluggable, discoverable capability modules — closer to Claude Code's `SKILL.md`-style progressive-disclosure model than a simple config toggle) | 🚧 Planned | No code yet. Design needs to reconcile with `docs/05`, which currently uses "skills" as a loose synonym for "tools" — that naming will be disambiguated before implementation. |
-| **Plugin system** (third-party tools/providers installable outside this repo) | 🚧 Planned | `docs/11` sketches the shape (a `codeagent-plugin-*` naming convention, tools registered into the same Tool Registry as built-ins, no safety opt-out for plugin tools). Deferred pending the Skills system, since plugins are likely to build on the same discovery/loading mechanism. |
-| Multi-agent / subagents | ❓ Undecided | `docs/01` currently lists this as an explicit v1 non-goal ("one agent, one conversation at a time"). Revisiting this is part of aiming at full Claude Code parity. |
+| API key in OS keychain | 🟡 Partial | Setup can *save* a key to the OS keychain, but the runtime doesn't read it back yet — the env var is still required at boot. |
+| **Hooks** (lifecycle events: pre/post tool use, session start/end) | ✅ Shipped (v1) | Shell-command hooks only; `PreToolUse` can block, `PostToolUse` can add context. Project-scoped (`.codeagent/hooks.json`) only — see `docs/17` and `codeagent hooks`. |
+| **Skills** (discoverable `SKILL.md` folders, progressive disclosure) | 🚧 Planned | The headline ask. Blocked on disambiguating "skills" from `docs/05`'s current tool-synonym usage first. |
+| Fine-grained permission rules & Plan Mode | 🚧 Planned | Evolves the existing confirm/`--yolo` safety layer rather than replacing it. |
+| **Subagents** | 🚧 Planned | Touches `orchestrator.js` directly, so per `docs/11` this needs a design pass, not a routine PR. Also reverses `docs/01`'s current "not a multi-agent framework" non-goal — that doc will be updated when this ships. |
+| **MCP client** (connect external tool servers) | 🚧 Planned | Separate from the LLM provider adapters above — this is a new *tool* source, not a new provider. |
+| **Plugins** (bundle Skills+Subagents+Hooks+MCP, install from GitHub/npm/local path) | 🚧 Planned | Deliberately last — in real Claude Code a plugin is a packaging format over the four items above, so building it first would ship an empty container. |
+| Interactive config manager, usage/cost tracking | 🚧 Planned | Lower priority than the above; see `PLAN.md` Phase 9. |
+
+Enterprise/hosted infrastructure (Bedrock/Vertex/Foundry routing, gateways, admin console, Slack/VS Code/JetBrains first-party extensions, hosted cloud execution, agent teams, remote control, computer use) is an explicit non-goal for this project — see `docs/16` for the reasoning.
 
 ---
 
@@ -128,6 +133,7 @@ codeagent undo                   Revert the most recent destructive change
 codeagent undo <ref>             Revert a specific recorded change
 codeagent sessions               List saved sessions for this project
 codeagent config                 Print the fully resolved config (API key redacted)
+codeagent hooks                  List hooks configured for this project (.codeagent/hooks.json)
 ```
 
 > **Setup wizard note:** `codeagent setup` can save your API key to the OS keychain, but that value isn't read back at boot yet — codeagent currently resolves the key from the environment variable only. Until the runtime lookup is wired up (see Roadmap), export the env var (e.g. `ANTHROPIC_API_KEY`) as well.
@@ -341,6 +347,8 @@ Full architecture and design docs live in [`docs/`](./docs):
 | [13 — Deployment, Publishing & Versioning](./docs/13-deployment-publishing-and-versioning.md) | npm publish pipeline, semver, changelog |
 | [14 — Support, Maintenance & Roadmap](./docs/14-support-maintenance-and-roadmap.md) | Issue triage, support channels, roadmap |
 | [15 — Security & Privacy](./docs/15-security-and-privacy.md) | API key handling, sandboxing, telemetry stance |
+| [16 — Claude Code Parity Audit](./docs/16-claude-code-parity-audit.md) | Feature-by-feature audit vs. current Claude Code; what's in scope, what isn't, and why |
+| [17 — Hooks](./docs/17-hooks.md) | Lifecycle event system — PreToolUse/PostToolUse/SessionStart/SessionEnd |
 
 ---
 

@@ -14,6 +14,7 @@ import { ConfigError, LimitExceededError } from "../utils/errors.js";
 import { runSetupWizard } from "./setup.js";
 import { handleModelsCommand } from "./models.js";
 import { handleMistralModelsCommand } from "./mistralModels.js";
+import { HookRegistry, HOOK_EVENTS, loadHooksConfig } from "../hooks/index.js";
 
 function buildCliConfigOverrides(opts) {
   const overrides = {};
@@ -31,6 +32,7 @@ async function oneShot(request, { config, logger, cwd }) {
   const diffTracker = sessionStore.diffTrackerFor(session);
   const confirm = createConfirmer({ config, logger });
   const contextManager = new ContextManager({ provider });
+  const hookRegistry = new HookRegistry({ cwd, logger });
   const orchestrator = new Orchestrator({
     provider,
     toolRegistry,
@@ -39,10 +41,13 @@ async function oneShot(request, { config, logger, cwd }) {
     logger,
     contextManager,
     diffTracker,
+    hookRegistry,
   });
 
   const projectContext = await buildProjectContext(cwd);
   const system = buildSystemPrompt({ projectContext, customAddendum: config.customSystemPromptAddendum });
+
+  await hookRegistry.run(HOOK_EVENTS.SESSION_START, { sessionId: session.id, cwd });
 
   try {
     const result = await orchestrator.runTurn({
@@ -56,6 +61,7 @@ async function oneShot(request, { config, logger, cwd }) {
           renderToolDeclined(event.tool, event.reason);
           if (event.reason === "no-tty") process.exitCode = 1;
         }
+        if (event.type === "tool_blocked") renderToolDeclined(event.tool, `hook: ${event.reason}`);
         if (event.type === "final_text") renderText(event.text);
         if (event.type === "tool_error") renderError(`${event.tool}: ${event.error.message}`);
       },
@@ -67,6 +73,8 @@ async function oneShot(request, { config, logger, cwd }) {
   } catch (err) {
     renderError(err.message);
     process.exitCode = err instanceof LimitExceededError ? 2 : 1;
+  } finally {
+    await hookRegistry.run(HOOK_EVENTS.SESSION_END, { sessionId: session.id, cwd });
   }
 }
 
@@ -96,8 +104,12 @@ async function interactive({ config, logger, cwd, resumeId }) {
   }
 
   const diffTracker = sessionStore.diffTrackerFor(session);
+  const hookRegistry = new HookRegistry({ cwd, logger });
+  await hookRegistry.run(HOOK_EVENTS.SESSION_START, { sessionId: session.id, cwd });
 
-  await startRepl({ provider, toolRegistry, config, logger, session, sessionStore, diffTracker, cwd });
+  await startRepl({ provider, toolRegistry, config, logger, session, sessionStore, diffTracker, cwd, hookRegistry });
+
+  await hookRegistry.run(HOOK_EVENTS.SESSION_END, { sessionId: session.id, cwd });
 }
 
 async function undoCommand(ref, { cwd }) {
@@ -137,6 +149,28 @@ function configCommand({ config }) {
   renderText(JSON.stringify(redactedConfig(config), null, 2));
 }
 
+function hooksCommand({ cwd }) {
+  let hooksConfig;
+  try {
+    hooksConfig = loadHooksConfig({ cwd });
+  } catch (err) {
+    renderError(err.message);
+    process.exitCode = 1;
+    return;
+  }
+  const events = Object.keys(hooksConfig.hooks || {});
+  if (events.length === 0) {
+    renderText("No hooks configured. Add .codeagent/hooks.json to define some — see docs/17.");
+    return;
+  }
+  for (const event of events) {
+    renderText(`${event}:`);
+    for (const def of hooksConfig.hooks[event]) {
+      renderText(`  ${def.matcher ? `[${def.matcher}] ` : ""}${def.command}`);
+    }
+  }
+}
+
 export async function run(argv) {
   const program = new Command();
   program
@@ -173,6 +207,13 @@ export async function run(argv) {
         renderError(err.message);
         process.exitCode = 1;
       }
+    });
+
+  program
+    .command("hooks")
+    .description("List hooks configured for this project (.codeagent/hooks.json)")
+    .action(() => {
+      hooksCommand({ cwd: process.cwd() });
     });
 
   program

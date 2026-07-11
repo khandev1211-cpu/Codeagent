@@ -7,7 +7,17 @@ import { createConfirmer } from "../safety/confirm.js";
 import { renderToolCall, renderToolDeclined, renderError, renderText } from "./render.js";
 import { LimitExceededError } from "../utils/errors.js";
 
-export async function startRepl({ provider, toolRegistry, config, logger, session, sessionStore, diffTracker, cwd }) {
+export async function startRepl({
+  provider,
+  toolRegistry,
+  config,
+  logger,
+  session,
+  sessionStore,
+  diffTracker,
+  cwd,
+  hookRegistry,
+}) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const confirm = createConfirmer({ config, logger });
   const contextManager = new ContextManager({ provider });
@@ -19,6 +29,7 @@ export async function startRepl({ provider, toolRegistry, config, logger, sessio
     logger,
     contextManager,
     diffTracker,
+    hookRegistry,
   });
 
   const projectContext = await buildProjectContext(cwd);
@@ -61,6 +72,7 @@ export async function startRepl({ provider, toolRegistry, config, logger, sessio
         onEvent: (event) => {
           if (event.type === "tool_call") renderToolCall(event.tool, event.input);
           if (event.type === "tool_declined") renderToolDeclined(event.tool, event.reason);
+          if (event.type === "tool_blocked") renderToolDeclined(event.tool, `hook: ${event.reason}`);
           if (event.type === "final_text") renderText(`\n${event.text}\n`);
           if (event.type === "tool_error") renderError(`${event.tool}: ${event.error.message}`);
         },

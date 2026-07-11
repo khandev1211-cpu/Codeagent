@@ -42,3 +42,9 @@ This is explicitly deferred rather than built in v1, because the tool-module sha
 ## Guiding test for any new extension
 
 Before adding something new, ask: *does this require touching orchestrator.js, base.js (the provider interface), or policy.js (the safety classification logic)?* If yes, it's not really "adding a tool/provider/config option" in the intended sense — it's a change to the core contract, and should be designed and reviewed as such, not slipped in as a routine addition.
+
+## Hooks: a fourth extension surface (doc 17)
+
+Phase 3 (doc 16) added a fourth kind of extension point alongside tools/providers/config: lifecycle hooks (`src/hooks/`), configured via `.codeagent/hooks.json`. This *did* touch `orchestrator.js` — per the guiding test above, that made it a deliberate core-contract change, not a routine addition, which is why it went through the audit and phased-plan process in `docs/16`/`PLAN.md` rather than landing as an ordinary PR. The change itself stayed additive within that review: `Orchestrator` gained an optional `hookRegistry` dependency (defaulting to a no-op), and two new invocation points in the existing loop — no restructuring of the loop's shape. See doc 17 for the full contract.
+
+Skills (Phase 4), Subagents (Phase 6), and Plugins (Phase 8) are expected to build on this same hooks foundation rather than each inventing their own extension mechanism.
