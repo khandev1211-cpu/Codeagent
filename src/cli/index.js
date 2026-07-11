@@ -11,6 +11,9 @@ import { createConfirmer } from "../safety/confirm.js";
 import { startRepl } from "./repl.js";
 import { renderToolCall, renderToolDeclined, renderText, renderError } from "./render.js";
 import { ConfigError, LimitExceededError } from "../utils/errors.js";
+import { runSetupWizard } from "./setup.js";
+import { handleModelsCommand } from "./models.js";
+import { handleMistralModelsCommand } from "./mistralModels.js";
 
 function buildCliConfigOverrides(opts) {
   const overrides = {};
@@ -166,6 +169,53 @@ export async function run(argv) {
       try {
         const config = loadConfig({}, { cwd: process.cwd() });
         configCommand({ config });
+      } catch (err) {
+        renderError(err.message);
+        process.exitCode = 1;
+      }
+    });
+
+  program
+    .command("setup")
+    .description("Run interactive setup wizard for first-time configuration")
+    .action(async () => {
+      try {
+        const config = loadConfig({}, { cwd: process.cwd() });
+        const logger = createLogger({ level: config.logLevel });
+        await runSetupWizard(config, logger);
+      } catch (err) {
+        renderError(err.message);
+        process.exitCode = 1;
+      }
+    });
+
+  const modelsCmd = program
+    .command("models [provider]")
+    .description("List available models for a provider")
+    .option("--details", "Show detailed model information (pricing, context, etc.)");
+
+  modelsCmd.action(async function(provider) {
+    try {
+      const opts = this.opts() || {};
+      // Provider can be passed as positional argument or default to anthropic
+      const selectedProvider = provider || "anthropic";
+      const options = {
+        provider: selectedProvider,
+        details: opts.details || false,
+      };
+      await handleModelsCommand(options);
+    } catch (err) {
+      renderError(err.message);
+      process.exitCode = 1;
+    }
+  });
+
+  program
+    .command("mistral-models")
+    .description("List all Mistral models accessible via your API key (live from API)")
+    .action(async () => {
+      try {
+        await handleMistralModelsCommand();
       } catch (err) {
         renderError(err.message);
         process.exitCode = 1;
