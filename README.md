@@ -1,17 +1,53 @@
-# codeagent
+<![CDATA[<div align="center">
+  <h1>🤖 Codeagent</h1>
+  <p><strong>A terminal-native AI coding agent — describe a goal, watch it build.</strong></p>
 
-A terminal-native AI coding agent, distributed as an npm package. Describe a goal in plain language — `codeagent` reads your project, plans, edits files, runs commands, and iterates until the task is done, asking for confirmation before anything destructive.
+  <p>
+    <a href="#features">Features</a> •
+    <a href="#quick-start">Quick Start</a> •
+    <a href="#usage">Usage</a> •
+    <a href="#configuration">Configuration</a> •
+    <a href="#documentation">Documentation</a> •
+    <a href="#contributing">Contributing</a>
+  </p>
+
+  <p>
+    <img src="https://img.shields.io/badge/node-%3E%3D18-339933?logo=node.js&logoColor=white" alt="Node >=18">
+    <img src="https://img.shields.io/badge/license-MIT-blue" alt="License MIT">
+    <img src="https://img.shields.io/badge/ESM-module-ffd700" alt="ESM Module">
+  </p>
+</div>
+
+---
+
+**codeagent** is a terminal-native AI coding agent, distributed as an npm package. Describe a goal in plain language — `codeagent` reads your project, plans, edits files, runs commands, and iterates until the task is done, asking for confirmation before anything destructive.
+
+Unlike chat-based coding assistants that only print code blocks for you to manually copy, codeagent **acts directly** on your codebase: reading, writing, editing files, searching across your project, and executing shell commands — all driven by an LLM that decides which tools to call and when.
+
+---
 
 ## Features
 
-- **Agentic, not just chat** — calls tools directly (read/write/edit files, search code, run shell commands) instead of printing diffs for you to paste.
-- **Safe by default** — every destructive action requires confirmation unless you explicitly pass `--yolo`.
-- **Resumable sessions** — kill the process and pick up exactly where you left off.
-- **Undo built in** — revert the agent's most recent file changes without touching git.
-- **Provider-agnostic core** — Anthropic is the default, but the agent loop itself isn't hardcoded to one API.
-- **Scriptable** — one-shot mode with proper exit codes, works in CI as well as interactively.
+| Capability | Description |
+|---|---|
+| 🧠 **Agentic, not just chat** | Calls tools directly (read/write/edit files, search code, run shell commands) instead of printing diffs for you to paste. |
+| 🛡️ **Safe by default** | Every destructive action requires confirmation unless you explicitly pass `--yolo`. |
+| 🔄 **Resumable sessions** | Kill the process and pick up exactly where you left off — no context lost. |
+| ↩️ **Undo built in** | Revert the agent's most recent file changes without touching git. |
+| 🔌 **Provider-agnostic core** | Anthropic is the default, but the agent loop itself isn't hardcoded to one API. |
+| 📜 **Scriptable** | One-shot mode with proper exit codes — works in CI as well as interactively. |
+| 🧩 **Extensible by design** | Add new tools, providers, or config options without touching the core loop. |
 
-## Install
+---
+
+## Quick Start
+
+### Prerequisites
+
+- **Node.js 18+** — required for native `fetch` and ESM support.
+- **Anthropic API key** — set as the `ANTHROPIC_API_KEY` environment variable.
+
+### Install
 
 ```bash
 npm install -g codeagent
@@ -23,58 +59,239 @@ Or run without installing:
 npx codeagent
 ```
 
-Requires Node.js 18+.
-
-## Setup
-
-Set your Anthropic API key as an environment variable:
+### Setup
 
 ```bash
-export ANTHROPIC_API_KEY="your-key-here"
+export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-## Quick start
+> **Security note:** Your API key is never stored in config files, logs, or session data. It is read from the environment variable at runtime and used only in the provider layer's HTTP requests.
+
+### Your first session
 
 ```bash
 cd your-project
 codeagent
 ```
 
-That starts an interactive session in your current directory. Describe what you want:
+That starts an interactive REPL in your current directory. Describe what you want:
 
 ```
 > Add input validation to the signup form and write a test for it
 ```
 
-The agent will read the relevant files, show you a diff before writing anything, and wait for your confirmation.
+The agent will:
+1. Read the relevant files to understand your codebase.
+2. Show you a diff before writing anything.
+3. Wait for your confirmation before each destructive action.
+4. Iterate until the task is complete.
+
+---
 
 ## Usage
 
+### Commands
+
 ```
-codeagent                        # start interactive session in current directory
-codeagent "do X"                 # one-shot: run a single request, print result, exit
-codeagent --resume <id>          # resume a specific saved session
-codeagent --resume last          # resume the most recent session for this project
-codeagent --yolo                 # skip destructive-action confirmations for this run
-codeagent --model <name>         # override the configured model for this run
-codeagent --provider <name>      # override the configured provider for this run
-codeagent undo                   # revert the most recent destructive change
-codeagent undo <ref>              # revert a specific recorded change
-codeagent sessions                # list saved sessions for this project
-codeagent config                 # print the fully resolved config (API key redacted)
+codeagent                        Start interactive session in current directory
+codeagent "do X"                 One-shot: run a single request, print result, exit
+codeagent --resume <id>          Resume a specific saved session
+codeagent --resume last          Resume the most recent session for this project
+codeagent --yolo                 Skip destructive-action confirmations for this run
+codeagent --model <name>         Override the configured model for this run
+codeagent --provider <name>      Override the configured provider for this run
+codeagent undo                   Revert the most recent destructive change
+codeagent undo <ref>             Revert a specific recorded change
+codeagent sessions               List saved sessions for this project
+codeagent config                 Print the fully resolved config (API key redacted)
 ```
+
+### Interactive REPL
+
+- **Streaming output** by default — text renders as it arrives from the provider.
+- **Tool calls** are rendered distinctly from the model's own text (e.g., `→ Reading src/index.js`).
+- **Destructive-action confirmations** show the actual diff, not just a description.
+- **Errors** are rendered clearly and distinctly from normal output.
+
+### One-shot mode
+
+```bash
+codeagent --yolo "run the migration"
+```
+
+Runs a single turn non-interactively and exits with:
+- Exit code `0` on success.
+- Non-zero exit code on failure (limit hit, unrecoverable error, or destructive action needing confirmation without a TTY).
+
+This makes codeagent suitable for scripting and CI pipelines.
+
+### Session management
+
+```bash
+codeagent sessions              # List all saved sessions
+codeagent --resume last         # Resume the most recent session
+codeagent --resume abc123       # Resume a specific session by ID
+```
+
+Sessions are persisted after every turn (not just on clean exit), so a killed process loses at most one in-flight turn.
+
+### Undo
+
+```bash
+codeagent undo                  # Revert the most recent destructive change
+codeagent undo abc123           # Revert a specific recorded change
+```
+
+The undo system tracks every destructive action with before/after content — it's a fast safety net, not a replacement for git.
+
+---
+
+## Architecture
+
+codeagent is built on a clean, layered architecture where each component has exactly one responsibility:
+
+```
+┌─────────────────────────────────────────────┐
+│                 CLI / REPL                    │
+│        (arg parsing, terminal I/O)           │
+└──────────────────────┬───────────────────────┘
+                       │
+                ┌──────▼────────┐
+                │  Agent Core    │
+                │ (orchestrator) │
+                └───┬──────┬─────┘
+                    │      │
+        ┌───────────▼──┐ ┌─▼────────────┐
+        │ Provider Layer│ │ Tool Registry │
+        │   (LLM API)   │ │  (tool list)  │
+        └───────────────┘ └──┬────────────┘
+                              │
+                    ┌─────────▼──────────┐
+                    │  Individual Tools   │
+                    │ (read, write, bash) │
+                    └─────────┬───────────┘
+                              │
+                    ┌─────────▼──────────┐
+                    │  Safety/Confirmation│
+                    │       Layer         │
+                    └─────────────────────┘
+
+        ┌────────────────────────────────────┐
+        │  Cross-cutting: Session Store,      │
+        │  Config, Logger, Context Manager    │
+        └────────────────────────────────────┘
+```
+
+| Layer | Responsibility |
+|---|---|
+| **CLI / REPL** | Argument parsing, terminal I/O, output rendering |
+| **Agent Core** | The loop: send → tool_use → execute → tool_result → repeat |
+| **Provider Layer** | Translating abstract "send messages, get response" into a specific API's wire format |
+| **Tool Registry** | Holding the list of available tools and their JSON schemas |
+| **Individual Tools** | Doing one file/shell operation each, returning a structured result |
+| **Safety Layer** | Classifying and gating destructive actions |
+| **Session Store** | Persisting conversation + file-change history to disk |
+| **Config** | Resolving layered settings into one final config object |
+
+### Data flow for a single turn
+
+1. User types a request in the REPL.
+2. Agent Core appends it to the session's message list.
+3. Agent Core calls the Provider Layer with messages + tool schemas.
+4. Provider Layer returns text or `tool_use` blocks.
+5. For each `tool_use`: Agent Core looks up the tool, passes through the Safety Layer, then executes.
+6. Tool result is appended; loop returns to step 3.
+7. When the model returns plain text with no tool calls, the turn ends and the session is persisted.
+
+---
 
 ## Configuration
 
-Settings resolve in this order (highest precedence first): CLI flags → project config (`.codeagent/config.json`) → global config (`~/.codeagentrc`) → built-in defaults. You don't need any config file to get started — everything works out of the box once `ANTHROPIC_API_KEY` is set.
+Settings resolve in this order (highest precedence first):
 
-Full schema and examples: [`docs/09-configuration.md`](./docs/09-configuration.md)
+```
+CLI flags → Project config (.codeagent/config.json) → Global config (~/.codeagentrc) → Built-in defaults
+```
+
+You don't need any config file to get started — everything works out of the box once `ANTHROPIC_API_KEY` is set.
+
+### Key configuration fields
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `provider` | `"anthropic" \| "openrouter" \| "mistral" \| "groq" \| "cerebras" \| "ollama"` | `"anthropic"` | LLM provider to use |
+| `model` | `string` | `"claude-sonnet-4-6"` | Model name |
+| `maxIterationsPerTurn` | `number` | `25` | Max tool-use iterations per user turn |
+| `yolo` | `boolean` | `false` | Skip destructive-action confirmations |
+| `allowedWritePaths` | `string[]` | `["."]` | Paths the agent is allowed to write to |
+| `planningEnabled` | `boolean` | `false` | Enable explicit task decomposition |
+| `ollamaBaseUrl` | `string` | `"http://localhost:11434"` | Only read by the `ollama` provider |
+
+### Supported providers
+
+`codeagent` ships six provider adapters, all behind the same `Provider` interface (doc 06) — switching between them is just `--provider <name>` (and usually `--model <name>` too), no code change.
+
+| Provider | `provider` value | API key env var | Notes |
+|---|---|---|---|
+| Anthropic | `anthropic` | `ANTHROPIC_API_KEY` | Default |
+| OpenRouter | `openrouter` | `OPENROUTER_API_KEY` | Gateway to many models, including `:free`-tagged ones |
+| Mistral | `mistral` | `MISTRAL_API_KEY` | [console.mistral.ai](https://console.mistral.ai) |
+| Groq | `groq` | `GROQ_API_KEY` | [console.groq.com](https://console.groq.com) — very fast inference, free tier |
+| Cerebras | `cerebras` | `CEREBRAS_API_KEY` | [cloud.cerebras.ai](https://cloud.cerebras.ai) — very fast inference, free tier |
+| Ollama | `ollama` | none (local) | Runs fully offline against a local Ollama server; set `ollamaBaseUrl` to point elsewhere |
+
+Example:
+
+```bash
+export GROQ_API_KEY="gsk_..."
+codeagent --provider groq --model llama-3.3-70b-versatile
+```
+
+```bash
+# No API key needed — talks to a local Ollama server
+codeagent --provider ollama --model llama3.1
+```
+
+### API key
+
+- Read from the environment variable named in `apiKeyEnvVar` (default `ANTHROPIC_API_KEY`).
+- **Never** stored directly in a config file.
+- If the env var isn't set, boot fails immediately with a clear instruction.
+
+---
 
 ## Safety
 
-Destructive actions (writing files, editing files, running shell commands) always show you exactly what's about to happen and wait for confirmation — this isn't configurable per-tool. If you want the agent to run unattended (e.g. in a script or CI), pass `--yolo` explicitly. Every bypassed confirmation is still logged, and file changes are still undoable even under `--yolo`.
+Destructive actions (writing files, editing files, running shell commands) always show you exactly what's about to happen and wait for confirmation — this isn't configurable per-tool.
 
-Details: [`docs/07-safety-and-permissions.md`](./docs/07-safety-and-permissions.md) · [`docs/15-security-and-privacy.md`](./docs/15-security-and-privacy.md)
+| Mechanism | Description |
+|---|---|
+| **Confirmation prompts** | Every destructive call shows the actual diff before proceeding |
+| **`--yolo` flag** | Bypass confirmations for unattended/CI runs (explicit, per-invocation) |
+| **Audit logging** | Every bypassed confirmation is still logged with tool, input, and timestamp |
+| **Path traversal protection** | Tools refuse to write outside the project root unless explicitly configured |
+| **Undo capability** | All file changes are recorded and revertible, even under `--yolo` |
+
+If you want the agent to run unattended (e.g., in a script or CI), pass `--yolo` explicitly. Every bypassed confirmation is still logged, and file changes are still undoable even under `--yolo`.
+
+---
+
+## Tools
+
+codeagent ships with six core tools that give the agent full control over your project:
+
+| Tool | Destructive | Purpose |
+|---|---|---|
+| `read_file` | No | Read file contents for code analysis |
+| `write_file` | Yes | Create or overwrite files |
+| `edit_file` | Yes | Make targeted find-and-replace edits |
+| `list_dir` | No | Explore project structure |
+| `search_code` | No | Regex search across the codebase |
+| `run_bash` | Yes | Execute shell commands |
+
+Adding a new tool is an **additive** change — create one file in `src/tools/` and register it. No core files need to change.
+
+---
 
 ## Documentation
 
@@ -82,31 +299,82 @@ Full architecture and design docs live in [`docs/`](./docs):
 
 | Doc | Covers |
 |---|---|
-| [00 — Index](./docs/00-index.md) | Start here |
-| [01 — Overview](./docs/01-overview.md) | Vision, goals, non-goals |
-| [02 — System Architecture](./docs/02-system-architecture.md) | Module map, data flow |
-| [03 — Package Structure](./docs/03-package-structure.md) | Folder layout, package.json |
-| [04 — Agent Core & Loop](./docs/04-agent-core-and-loop.md) | The orchestrator loop |
-| [05 — Tools & Skills](./docs/05-tools-and-skills.md) | Every tool's contract |
-| [06 — Provider Layer](./docs/06-provider-layer.md) | LLM abstraction |
-| [07 — Safety & Permissions](./docs/07-safety-and-permissions.md) | Destructive-op gating |
-| [08 — Context & Session Management](./docs/08-context-and-session-management.md) | Context handling, persistence, undo |
-| [09 — Configuration](./docs/09-configuration.md) | Layered config system |
-| [10 — CLI & UX](./docs/10-cli-and-ux.md) | Full command reference |
-| [11 — Extensibility & Plugins](./docs/11-extensibility-and-plugins.md) | Adding tools/providers |
-| [12 — Testing & QA](./docs/12-testing-and-quality-assurance.md) | Test strategy |
-| [13 — Deployment & Publishing](./docs/13-deployment-publishing-and-versioning.md) | Release process |
-| [14 — Support, Maintenance & Roadmap](./docs/14-support-maintenance-and-roadmap.md) | Issue triage, roadmap |
-| [15 — Security & Privacy](./docs/15-security-and-privacy.md) | Key handling, sandboxing, telemetry stance |
+| [00 — Index](./docs/00-index.md) | Start here — map of the entire doc set |
+| [01 — Overview](./docs/01-overview.md) | Vision, goals, target users, non-goals |
+| [02 — System Architecture](./docs/02-system-architecture.md) | Module map, data flow, layer responsibilities |
+| [03 — Package Structure](./docs/03-package-structure.md) | Folder layout, package.json, module boundaries |
+| [04 — Agent Core & Loop](./docs/04-agent-core-and-loop.md) | The orchestrator loop, limits, error handling |
+| [05 — Tools & Skills](./docs/05-tools-and-skills.md) | Every tool's schema, contract, and behavior |
+| [06 — Provider Layer](./docs/06-provider-layer.md) | LLM abstraction, Anthropic adapter, retry logic |
+| [07 — Safety & Permissions](./docs/07-safety-and-permissions.md) | Destructive-op gating, confirmation flow, `--yolo` |
+| [08 — Context & Session Management](./docs/08-context-and-session-management.md) | Context window handling, persistence, undo |
+| [09 — Configuration](./docs/09-configuration.md) | Layered config system, schema, env vars |
+| [10 — CLI & UX](./docs/10-cli-and-ux.md) | Commands, flags, REPL behavior, output formatting |
+| [11 — Extensibility & Plugins](./docs/11-extensibility-and-plugins.md) | Adding tools/providers without touching core |
+| [12 — Testing & QA](./docs/12-testing-and-quality-assurance.md) | Test strategy per module, CI gates |
+| [13 — Deployment, Publishing & Versioning](./docs/13-deployment-publishing-and-versioning.md) | npm publish pipeline, semver, changelog |
+| [14 — Support, Maintenance & Roadmap](./docs/14-support-maintenance-and-roadmap.md) | Issue triage, support channels, roadmap |
+| [15 — Security & Privacy](./docs/15-security-and-privacy.md) | API key handling, sandboxing, telemetry stance |
+
+---
+
+## Extensibility
+
+codeagent is designed so that adding capabilities is **additive** — a new file plus a one-line registration — rather than requiring changes to the orchestrator, provider layer, or safety layer.
+
+| Extension | What to do |
+|---|---|
+| **New tool** | Create `src/tools/myTool.js` matching the tool shape, add one line to `src/tools/index.js` |
+| **New provider** | Create `src/providers/myProvider.js` implementing the `Provider` interface, add one `case` to the factory |
+| **New config option** | Add the field to `ConfigSchema` in `src/config/schema.js` with a sensible default |
+
+See [doc 11 — Extensibility & Plugins](./docs/11-extensibility-and-plugins.md) for the full guide.
+
+---
 
 ## Contributing
 
-Read [`docs/11-extensibility-and-plugins.md`](./docs/11-extensibility-and-plugins.md) first — most contributions (new tools, new providers, new config options) are additive and don't require touching the core loop. See [`docs/14-support-maintenance-and-roadmap.md`](./docs/14-support-maintenance-and-roadmap.md) for the full contribution and triage process.
+We welcome contributions! Here's how to get started:
+
+1. **Read the docs** — especially [doc 11 (Extensibility)](./docs/11-extensibility-and-plugins.md) and [doc 14 (Support & Maintenance)](./docs/14-support-maintenance-and-roadmap.md).
+2. **Most contributions are additive** — new tools, new providers, new config options don't require touching the core loop.
+3. **Tests are required** — every new tool/provider needs tests per the patterns in [doc 12](./docs/12-testing-and-quality-assurance.md).
+4. **PRs touching `orchestrator.js`, `base.js`, or `policy.js`** need extra scrutiny — these are the core contracts.
+
+```bash
+# Setup
+git clone https://github.com/khandev1211-cpu/Codeagent.git
+cd codeagent
+npm install
+
+# Run tests
+npm test
+
+# Lint
+npm run lint
+```
+
+---
 
 ## Security
 
-Please report security issues privately rather than opening a public issue — see [`docs/15-security-and-privacy.md`](./docs/15-security-and-privacy.md) for scope and reporting guidance, particularly around prompt-injection-style risks specific to agentic tools.
+Please report security issues **privately** rather than opening a public issue. See [doc 15 — Security & Privacy](./docs/15-security-and-privacy.md) for scope and reporting guidance, particularly around prompt-injection-style risks specific to agentic tools.
+
+Key security guarantees:
+- API keys are never logged, stored in config files, or committed.
+- Path traversal is blocked by default.
+- All destructive actions are gated behind confirmation.
+- Session data is stored locally and never sent to any third-party service.
+
+---
 
 ## License
 
-MIT
+[MIT](./LICENSE) © codeagent contributors
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ for developers who want an AI coding partner that actually does the work.</sub>
+</div>
+]]>

@@ -35,6 +35,12 @@ Every adapter implements this same shape. The orchestrator only ever calls `prov
 - Handles streaming via Anthropic's SSE-based streaming response, re-emitted as the generator shape the interface expects.
 - `countTokens` uses Anthropic's token counting, or a local approximation if a dedicated endpoint isn't used, clearly documented as an estimate.
 
+## OpenAI-compatible adapters (`src/providers/openAiCompatible.js`)
+
+OpenRouter, Mistral, Groq, Cerebras, and Ollama all speak the same OpenAI-style `/chat/completions` wire format, so they share one base class (`OpenAiCompatibleProvider`) that handles tool-schema translation, message-format translation, retries, and rate-limit handling once. Each concrete adapter (`src/providers/mistral.js`, `groq.js`, `cerebras.js`, `ollama.js`, `openrouter.js`) is then just that base class pointed at a base URL and an auth scheme — a handful of lines each, no duplicated translation logic. Ollama is the one adapter with `requiresApiKey: false`, since it talks to a local server by default (base URL configurable via `ollamaBaseUrl` or `OLLAMA_HOST`).
+
+This is the concrete illustration of doc 11's extensibility claim: adding Mistral, Groq, and Cerebras required zero changes to the Anthropic adapter, the orchestrator, or the safety layer — just three new small files plus three `case`s in the factory.
+
 ## Provider selection (`src/providers/index.js`)
 
 A small factory that reads the resolved config (doc 09) and returns the right adapter instance:
