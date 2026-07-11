@@ -30,7 +30,7 @@ export function getDefaults() {
 export const PROVIDER_DEFAULTS = {
   anthropic: { model: "claude-sonnet-4-6", apiKeyEnvVar: "ANTHROPIC_API_KEY" },
   openrouter: { model: "openrouter/auto", apiKeyEnvVar: "OPENROUTER_API_KEY" },
-  mistral: { model: "mistral-large-latest", apiKeyEnvVar: "MISTRAL_API_KEY" },
+  mistral: { model: "codestral-latest", apiKeyEnvVar: "MISTRAL_API_KEY" },
   groq: { model: "llama-3.3-70b-versatile", apiKeyEnvVar: "GROQ_API_KEY" },
   cerebras: { model: "llama-3.3-70b", apiKeyEnvVar: "CEREBRAS_API_KEY" },
   ollama: { model: "llama3.1", apiKeyEnvVar: "OLLAMA_API_KEY" },
