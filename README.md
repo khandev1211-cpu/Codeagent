@@ -12,6 +12,7 @@
   </p>
 
   <p>
+    <img src="https://github.com/khandev1211-cpu/Codeagent/actions/workflows/ci.yml/badge.svg" alt="CI">
     <img src="https://img.shields.io/badge/node-%3E%3D18-339933?logo=node.js&logoColor=white" alt="Node >=18">
     <img src="https://img.shields.io/badge/license-MIT-blue" alt="License MIT">
     <img src="https://img.shields.io/badge/ESM-module-ffd700" alt="ESM Module">
