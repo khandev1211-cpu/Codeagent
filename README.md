@@ -51,9 +51,10 @@ Where codeagent is headed, and honestly, what's real today versus what's still d
 | Area | Status | Notes |
 |---|---|---|
 | Core agent loop, 6 tools, safety/undo/sessions | ✅ Shipped | `docs/02`–`docs/08`. |
-| Six provider adapters | ✅ Shipped | `docs/06`. Switch via `--provider`/`--model`. |
-| Setup wizard, `models` / `mistral-models` commands | ✅ Shipped | `codeagent setup`, `codeagent models`. |
-| API key in OS keychain | 🟡 Partial | Setup can *save* a key to the OS keychain, but the runtime doesn't read it back yet — the env var is still required at boot. |
+| Six provider adapters | ✅ Shipped | `docs/06`. Switch with `codeagent use <provider>`, or override per-run with `--provider`/`--model`. |
+| Setup wizard, persisted config, first-run auto-detection | ✅ Shipped | `codeagent setup` remembers your choices in `~/.codeagentrc` and auto-runs on a fresh install. `codeagent providers` / `codeagent use` manage multiple configured providers; history carries over across a switch — see `docs/18`. |
+| API key in OS keychain | ✅ Shipped | Read *and* write now — `codeagent setup` can save a key to the keychain and it's actually read back at boot (`docs/18`). Also fixed a real shell-injection risk in how keys were passed to `security`/`pass`/`cmdkey`. |
+| Admin system prompt | ✅ Shipped (v1) | `codeagent system-prompt set "<text>"` — global, priority-layered over project context, doesn't touch the Safety Layer or Hooks (`docs/18`). |
 | **Hooks** (lifecycle events: pre/post tool use, session start/end) | ✅ Shipped (v1) | Shell-command hooks only; `PreToolUse` can block, `PostToolUse` can add context. Project-scoped (`.codeagent/hooks.json`) only — see `docs/17` and `codeagent hooks`. |
 | **Skills** (discoverable `SKILL.md` folders, progressive disclosure) | 🚧 Planned | The headline ask. Blocked on disambiguating "skills" from `docs/05`'s current tool-synonym usage first. |
 | Fine-grained permission rules & Plan Mode | 🚧 Planned | Evolves the existing confirm/`--yolo` safety layer rather than replacing it. |
@@ -134,9 +135,12 @@ codeagent undo <ref>             Revert a specific recorded change
 codeagent sessions               List saved sessions for this project
 codeagent config                 Print the fully resolved config (API key redacted)
 codeagent hooks                  List hooks configured for this project (.codeagent/hooks.json)
+codeagent providers               List every configured provider, which is active, and its key source
+codeagent use <provider> [model]  Switch the active provider/model (persists; history carries over)
+codeagent system-prompt [show|set <text>|clear]   Manage your global admin system prompt
 ```
 
-> **Setup wizard note:** `codeagent setup` can save your API key to the OS keychain, but that value isn't read back at boot yet — codeagent currently resolves the key from the environment variable only. Until the runtime lookup is wired up (see Roadmap), export the env var (e.g. `ANTHROPIC_API_KEY`) as well.
+> **Setup wizard:** `codeagent setup` walks you through it once — provider, key, model — and remembers it in `~/.codeagentrc`. Run it again anytime to add another provider, switch your default, or reconfigure a key; on a completely fresh install, just running `codeagent` triggers it automatically before your first command.
 
 ### Interactive REPL
 
@@ -349,6 +353,7 @@ Full architecture and design docs live in [`docs/`](./docs):
 | [15 — Security & Privacy](./docs/15-security-and-privacy.md) | API key handling, sandboxing, telemetry stance |
 | [16 — Claude Code Parity Audit](./docs/16-claude-code-parity-audit.md) | Feature-by-feature audit vs. current Claude Code; what's in scope, what isn't, and why |
 | [17 — Hooks](./docs/17-hooks.md) | Lifecycle event system — PreToolUse/PostToolUse/SessionStart/SessionEnd |
+| [18 — Provider Management & Admin Prompt](./docs/18-provider-management-and-admin-prompt.md) | Multi-provider config, persisted setup, shared history across providers, admin system prompt |
 
 ---
 

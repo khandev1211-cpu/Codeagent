@@ -1,7 +1,15 @@
 import { Command } from "commander";
-import { loadConfig, redactedConfig } from "../config/loader.js";
+import {
+  loadConfig,
+  redactedConfig,
+  configExists,
+  listConfiguredProviders,
+  upsertProvider,
+  saveGlobalConfig,
+} from "../config/loader.js";
 import { createLogger } from "../utils/logger.js";
 import { getProvider } from "../providers/index.js";
+import { resolveApiKey } from "../providers/resolveApiKey.js";
 import { createDefaultRegistry } from "../tools/index.js";
 import { SessionStore } from "../session/store.js";
 import { Orchestrator } from "../agent/orchestrator.js";
@@ -45,7 +53,11 @@ async function oneShot(request, { config, logger, cwd }) {
   });
 
   const projectContext = await buildProjectContext(cwd);
-  const system = buildSystemPrompt({ projectContext, customAddendum: config.customSystemPromptAddendum });
+  const system = buildSystemPrompt({
+    projectContext,
+    customAddendum: config.customSystemPromptAddendum,
+    adminPrompt: config.adminSystemPrompt,
+  });
 
   await hookRegistry.run(HOOK_EVENTS.SESSION_START, { sessionId: session.id, cwd });
 
@@ -171,7 +183,93 @@ function hooksCommand({ cwd }) {
   }
 }
 
+function providersCommand({ config }) {
+  const configured = config.providers || {};
+  const names = Object.keys(configured);
+  if (names.length === 0) {
+    renderText('No providers configured yet. Run "codeagent setup" to add one.');
+    return;
+  }
+  for (const name of names) {
+    const marker = name === config.provider ? "* " : "  ";
+    const entry = configured[name];
+    const keySource = entry.useKeychain ? "keychain" : `env:${entry.apiKeyEnvVar}`;
+    renderText(`${marker}${name}  model=${entry.model || "(default)"}  key=${keySource}`);
+  }
+  renderText(
+    '\n(* = active)  Run "codeagent use <provider> [model]" to switch, or "codeagent models <provider>" to see every model available for one.'
+  );
+}
+
+async function useCommand(providerArg, modelArg, { homedir } = {}) {
+  const configured = listConfiguredProviders({ homedir });
+  const existing = configured[providerArg];
+  if (!existing) {
+    renderError(`"${providerArg}" is not configured yet. Run "codeagent setup" to add it first.`);
+    process.exitCode = 1;
+    return;
+  }
+  const model = modelArg || existing.model;
+  upsertProvider(
+    { provider: providerArg, apiKeyEnvVar: existing.apiKeyEnvVar, model, useKeychain: existing.useKeychain },
+    { homedir, makeActive: true }
+  );
+  renderText(`Switched to ${providerArg}${model ? ` (${model})` : ""}. Your session history carries over regardless of which provider is active.`);
+}
+
+async function systemPromptCommand(action, text, { homedir } = {}) {
+  const effectiveAction = action || "show";
+  if (effectiveAction === "show") {
+    const config = loadConfig({}, { cwd: process.cwd(), homedir });
+    if (!config.adminSystemPrompt) {
+      renderText('No admin system prompt set. Run: codeagent system-prompt set "<your instruction>"');
+      return;
+    }
+    renderText(config.adminSystemPrompt);
+    return;
+  }
+  if (effectiveAction === "set") {
+    if (!text || !text.trim()) {
+      renderError('Usage: codeagent system-prompt set "<your instruction>"');
+      process.exitCode = 1;
+      return;
+    }
+    saveGlobalConfig({ adminSystemPrompt: text.trim() }, { homedir });
+    renderText("Saved. This applies across every project until you change or clear it (docs/18).");
+    return;
+  }
+  if (effectiveAction === "clear") {
+    saveGlobalConfig({ adminSystemPrompt: "" }, { homedir });
+    renderText("Cleared your admin system prompt.");
+    return;
+  }
+  renderError(`Unknown action "${effectiveAction}". Use "show", "set <text>", or "clear".`);
+  process.exitCode = 1;
+}
+
+/**
+ * Decides whether to run the setup wizard before dispatching any command —
+ * the first-run detection docs/18 describes. Factored out (rather than
+ * inlined in run()) so the decision logic is unit-testable without
+ * needing to drive a real interactive wizard.
+ */
+export function shouldRunFirstTimeSetup(argv, { homedir } = {}) {
+  const args = argv.slice(2);
+  const isExplicitSetupCommand = args[0] === "setup";
+  const isHelpOrVersion = args.some((a) => ["--help", "-h", "--version", "-V"].includes(a));
+  if (isExplicitSetupCommand || isHelpOrVersion) return false;
+  return !configExists({ homedir });
+}
 export async function run(argv) {
+  if (shouldRunFirstTimeSetup(argv)) {
+    const cwd = process.cwd();
+    const config = loadConfig({}, { cwd });
+    const logger = createLogger({ level: config.logLevel });
+    renderText("No provider configured yet — let's set one up.\n");
+    await runSetupWizard(config, logger);
+    renderText("\nContinuing with your original command...\n");
+  }
+
   const program = new Command();
   program
     .name("codeagent")
@@ -214,6 +312,33 @@ export async function run(argv) {
     .description("List hooks configured for this project (.codeagent/hooks.json)")
     .action(() => {
       hooksCommand({ cwd: process.cwd() });
+    });
+
+  program
+    .command("providers")
+    .description("List every configured provider, which one is active, and where its key comes from")
+    .action(() => {
+      try {
+        const config = loadConfig({}, { cwd: process.cwd() });
+        providersCommand({ config });
+      } catch (err) {
+        renderError(err.message);
+        process.exitCode = 1;
+      }
+    });
+
+  program
+    .command("use <provider> [model]")
+    .description("Switch the active provider/model (persists in ~/.codeagentrc; history carries over)")
+    .action(async (providerArg, modelArg) => {
+      await useCommand(providerArg, modelArg, {});
+    });
+
+  program
+    .command("system-prompt [action] [text...]")
+    .description('Manage your global admin system prompt: "show" (default), "set <text>", or "clear"')
+    .action(async (action, textParts) => {
+      await systemPromptCommand(action, (textParts || []).join(" "), {});
     });
 
   program
@@ -277,15 +402,19 @@ export async function run(argv) {
       throw err;
     }
 
-    if (!process.env[config.apiKeyEnvVar]) {
-      renderError(
-        `Environment variable ${config.apiKeyEnvVar} is not set. Set it before running codeagent, e.g.:\n  export ${config.apiKeyEnvVar}="..."`
-      );
-      process.exitCode = 1;
-      return;
-    }
-
     const logger = createLogger({ level: config.logLevel });
+    const provider = getProvider(config, { logger });
+
+    if (provider.requiresApiKey !== false) {
+      const key = await resolveApiKey({ provider: config.provider, apiKeyEnvVar: config.apiKeyEnvVar, logger });
+      if (!key) {
+        renderError(
+          `No API key found for ${config.provider}. Set ${config.apiKeyEnvVar} in your shell, or run "codeagent setup" to save one.`
+        );
+        process.exitCode = 1;
+        return;
+      }
+    }
 
     if (request) {
       await oneShot(request, { config, logger, cwd });

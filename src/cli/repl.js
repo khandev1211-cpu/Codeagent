@@ -61,6 +61,7 @@ export async function startRepl({
       projectContext,
       plannerOutput,
       customAddendum: config.customSystemPromptAddendum,
+      adminPrompt: config.adminSystemPrompt,
     });
 
     try {

@@ -45,8 +45,12 @@ Validation failure produces a clear, specific error message (which field, what w
 
 ## API key sourcing
 
-- Read from the environment variable named in `apiKeyEnvVar` (default `ANTHROPIC_API_KEY`), **never** stored directly in a config file.
-- If the env var isn't set, boot fails immediately with a clear instruction, rather than the session starting and failing confusingly on the first provider call.
+- Read from the environment variable named in `apiKeyEnvVar` (default `ANTHROPIC_API_KEY`) first — **never** stored directly in a config file.
+- If the env var isn't set, falls back to the OS keychain (if `codeagent setup` saved one there) before failing — see doc 18 for the full resolution order (`src/providers/resolveApiKey.js`). Only if neither is found does boot fail, with a clear instruction rather than a cryptic downstream failure mid-session.
+
+## Multi-provider config and the admin system prompt
+
+`ConfigSchema` also carries a `providers` map (every provider ever configured via `codeagent setup`, not just the active one) and an optional `adminSystemPrompt` (a global, priority-layered standing instruction). These are additive to the schema above and don't change how `provider`/`model`/`apiKeyEnvVar` resolve — full detail in doc 18, since they're really about the setup/provider-management story, not the config-loading mechanics this doc owns.
 
 ## Project vs. global config — what belongs where
 

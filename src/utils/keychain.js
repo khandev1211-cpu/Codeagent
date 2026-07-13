@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import os from "os";
 import path from "path";
 import fs from "fs";
@@ -7,7 +7,13 @@ import fs from "fs";
  * OS-agnostic API key storage using platform-native credential managers:
  * - Windows: Credential Manager (via `cmdkey`)
  * - macOS: Keychain (via `security`)
- * - Linux: `pass` password manager (fallback: encrypted file)
+ * - Linux: `pass` password manager (fallback: local file, 0600 permissions)
+ *
+ * Every shell-out uses execFileSync with an argument array (never a
+ * string handed to a shell), and secret values are passed via argv or
+ * stdin — never interpolated into a command string. An API key can
+ * contain any character (quotes, backticks, `$()`, `;`) without risk of
+ * it being interpreted as shell syntax.
  */
 export class KeychainManager {
   constructor({ logger = console } = {}) {
@@ -17,7 +23,7 @@ export class KeychainManager {
   }
 
   /**
-   * Save API key to keychain. Falls back to encrypted local storage if unavailable.
+   * Save API key to keychain. Falls back to local storage if unavailable.
    */
   async saveKey(provider, key) {
     try {
@@ -35,7 +41,9 @@ export class KeychainManager {
   }
 
   /**
-   * Retrieve API key from keychain.
+   * Retrieve API key from keychain. This is the read half of what used to
+   * be a write-only operation — see providers/resolveApiKey.js for where
+   * it's actually consulted at runtime now.
    */
   async getKey(provider) {
     try {
@@ -70,14 +78,25 @@ export class KeychainManager {
     }
   }
 
+  /** Which providers currently have a key stored somewhere this manager can see. */
+  async listConfiguredProviders(candidateProviders) {
+    const found = [];
+    for (const provider of candidateProviders) {
+      const key = await this.getKey(provider).catch(() => null);
+      if (key) found.push(provider);
+    }
+    return found;
+  }
+
   // ==================== Windows (Credential Manager) ====================
 
   _saveKeyWindows(provider, key) {
     const target = `${this.serviceName}:${provider}`;
-    // Using cmdkey to store credentials
-    const cmd = `cmdkey /add:${target} /user:${provider} /pass:"${key.replace(/"/g, '\\"')}"`;
     try {
-      execSync(cmd, { stdio: "pipe", windowsHide: true });
+      execFileSync("cmdkey", [`/add:${target}`, `/user:${provider}`, `/pass:${key}`], {
+        stdio: "pipe",
+        windowsHide: true,
+      });
       return true;
     } catch (error) {
       throw new Error(`Failed to save key to Windows Credential Manager: ${error.message}`);
@@ -87,9 +106,12 @@ export class KeychainManager {
   _getKeyWindows(provider) {
     const target = `${this.serviceName}:${provider}`;
     try {
-      // Query stored credential
-      const cmd = `powershell -NoProfile -Command "$cred = Get-StoredCredential -Target '${target}' -ErrorAction SilentlyContinue; if ($cred) { $cred.GetNetworkCredential().Password } else { exit 1 }"`;
-      const result = execSync(cmd, { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }).trim();
+      const psCommand = `$cred = Get-StoredCredential -Target '${target}' -ErrorAction SilentlyContinue; if ($cred) { $cred.GetNetworkCredential().Password } else { exit 1 }`;
+      const result = execFileSync("powershell", ["-NoProfile", "-Command", psCommand], {
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+        windowsHide: true,
+      }).trim();
       return result || null;
     } catch {
       return null;
@@ -99,7 +121,7 @@ export class KeychainManager {
   _deleteKeyWindows(provider) {
     const target = `${this.serviceName}:${provider}`;
     try {
-      execSync(`cmdkey /delete:${target}`, { stdio: "pipe", windowsHide: true });
+      execFileSync("cmdkey", [`/delete:${target}`], { stdio: "pipe", windowsHide: true });
       return true;
     } catch (error) {
       throw new Error(`Failed to delete key from Windows Credential Manager: ${error.message}`);
@@ -112,17 +134,12 @@ export class KeychainManager {
     const account = provider;
     const service = this.serviceName;
     try {
-      // Delete existing entry if present
       try {
-        execSync(
-          `security delete-generic-password -s "${service}" -a "${account}" 2>/dev/null`,
-          { stdio: "pipe" }
-        );
+        execFileSync("security", ["delete-generic-password", "-s", service, "-a", account], { stdio: "pipe" });
       } catch {
         // Ignore if not found
       }
-      // Add new entry
-      execSync(`security add-generic-password -s "${service}" -a "${account}" -w "${key}"`, {
+      execFileSync("security", ["add-generic-password", "-s", service, "-a", account, "-w", key], {
         stdio: "pipe",
       });
       return true;
@@ -135,8 +152,9 @@ export class KeychainManager {
     const account = provider;
     const service = this.serviceName;
     try {
-      const result = execSync(
-        `security find-generic-password -s "${service}" -a "${account}" -w 2>/dev/null`,
+      const result = execFileSync(
+        "security",
+        ["find-generic-password", "-s", service, "-a", account, "-w"],
         { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
       ).trim();
       return result || null;
@@ -149,9 +167,7 @@ export class KeychainManager {
     const account = provider;
     const service = this.serviceName;
     try {
-      execSync(`security delete-generic-password -s "${service}" -a "${account}"`, {
-        stdio: "pipe",
-      });
+      execFileSync("security", ["delete-generic-password", "-s", service, "-a", account], { stdio: "pipe" });
       return true;
     } catch (error) {
       throw new Error(`Failed to delete key from macOS Keychain: ${error.message}`);
@@ -162,39 +178,39 @@ export class KeychainManager {
 
   _saveKeyLinux(provider, key) {
     try {
-      // Try using `pass` if available
-      execSync("which pass", { stdio: "pipe" });
+      execFileSync("which", ["pass"], { stdio: "pipe" });
       const passPath = `codeagent/${provider}`;
-      execSync(`echo "${key}" | pass insert -f -m ${passPath}`, { stdio: "pipe" });
+      // `pass insert -f -m <path>` reads the secret from stdin until EOF —
+      // passing it via `input` avoids ever building a shell command string
+      // out of the key (the old code did `echo "${key}" | pass insert`,
+      // which was both a shell-injection risk and mangled keys containing
+      // certain characters).
+      execFileSync("pass", ["insert", "-f", "-m", passPath], { input: key, stdio: ["pipe", "pipe", "pipe"] });
       return true;
     } catch {
-      // Fallback to local encrypted storage
       return this._saveKeyLocal(provider, key);
     }
   }
 
   _getKeyLinux(provider) {
     try {
-      // Try using `pass` if available
-      execSync("which pass", { stdio: "pipe" });
+      execFileSync("which", ["pass"], { stdio: "pipe" });
       const passPath = `codeagent/${provider}`;
-      const result = execSync(`pass show ${passPath} 2>/dev/null`, {
+      const result = execFileSync("pass", ["show", passPath], {
         encoding: "utf-8",
         stdio: ["pipe", "pipe", "pipe"],
       }).trim();
       return result || null;
     } catch {
-      // Fallback to local storage
       return this._getKeyLocal(provider);
     }
   }
 
   _deleteKeyLinux(provider) {
     try {
-      // Try using `pass` if available
-      execSync("which pass", { stdio: "pipe" });
+      execFileSync("which", ["pass"], { stdio: "pipe" });
       const passPath = `codeagent/${provider}`;
-      execSync(`pass rm -f ${passPath}`, { stdio: "pipe" });
+      execFileSync("pass", ["rm", "-f", passPath], { stdio: "pipe" });
       return true;
     } catch {
       return this._deleteKeyLocal(provider);
@@ -202,6 +218,9 @@ export class KeychainManager {
   }
 
   // ==================== Fallback: Local Storage ====================
+  // Note: this is permission-restricted (0600) plaintext, not encryption —
+  // it's a last-resort fallback for platforms with no credential manager
+  // and no `pass`, not intended as the primary storage mechanism.
 
   _getKeysFile() {
     const configDir = path.join(os.homedir(), ".codeagent");

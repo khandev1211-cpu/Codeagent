@@ -19,6 +19,29 @@ export const ConfigSchema = z.object({
   // Only read by the Ollama adapter (doc 06) — lets users point at a
   // non-default port or a remote host running Ollama.
   ollamaBaseUrl: z.string().optional(),
+  // Every provider the user has ever configured via `codeagent setup`
+  // (whether or not it's the currently active one), keyed by provider name.
+  // `provider`/`model`/`apiKeyEnvVar` above remain "the active selection" —
+  // existing code that reads those three fields is unaffected. This map is
+  // what makes "add another provider" and `codeagent providers`/`use`
+  // possible without redesigning the resolved-config shape everything else
+  // already depends on. See docs/18.
+  providers: z
+    .record(
+      z.string(),
+      z.object({
+        apiKeyEnvVar: z.string(),
+        model: z.string().optional(),
+        useKeychain: z.boolean().optional(),
+      })
+    )
+    .default({}),
+  // A standing, global instruction from whoever runs `codeagent setup` on
+  // this machine — takes priority over the built-in system prompt but
+  // doesn't replace it (docs/18). Global-only by design: it's meant to be
+  // "how I personally want codeagent to behave," not a per-project setting
+  // (use customSystemPromptAddendum above for that).
+  adminSystemPrompt: z.string().optional(),
 });
 
 export function getDefaults() {

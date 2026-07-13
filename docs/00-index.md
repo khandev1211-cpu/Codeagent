@@ -1,6 +1,6 @@
 # codeagent — Documentation Index
 
-This is the full documentation set for **codeagent**, a terminal-native AI coding agent distributed as an npm package. Seventeen documents, each owning one concern so nothing is duplicated across files.
+This is the full documentation set for **codeagent**, a terminal-native AI coding agent distributed as an npm package. Eighteen documents, each owning one concern so nothing is duplicated across files.
 
 | # | Document | Covers |
 |---|---|---|
@@ -21,6 +21,7 @@ This is the full documentation set for **codeagent**, a terminal-native AI codin
 | 15 | [Security & Privacy](./15-security-and-privacy.md) | API key handling, sandboxing, telemetry stance |
 | 16 | [Claude Code Parity Audit](./16-claude-code-parity-audit.md) | Feature-by-feature audit vs. current Claude Code; drives PLAN.md's phase order |
 | 17 | [Hooks](./17-hooks.md) | Lifecycle event system — PreToolUse/PostToolUse/SessionStart/SessionEnd, `.codeagent/hooks.json` |
+| 18 | [Provider Management & Admin Prompt](./18-provider-management-and-admin-prompt.md) | Multi-provider config, persisted setup, first-run detection, shared history across providers, admin system prompt |
 
 ## How to use this set
 
