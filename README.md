@@ -13,7 +13,7 @@
 
   <p>
     <img src="https://github.com/khandev1211-cpu/Codeagent/actions/workflows/ci.yml/badge.svg" alt="CI">
-    <img src="https://img.shields.io/badge/node-%3E%3D18-339933?logo=node.js&logoColor=white" alt="Node >=18">
+    <img src="https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white" alt="Node >=22">
     <img src="https://img.shields.io/badge/license-MIT-blue" alt="License MIT">
     <img src="https://img.shields.io/badge/ESM-module-ffd700" alt="ESM Module">
   </p>
@@ -72,7 +72,7 @@ Enterprise/hosted infrastructure (Bedrock/Vertex/Foundry routing, gateways, admi
 
 ### Prerequisites
 
-- **Node.js 18+** — required for native `fetch` and ESM support.
+- **Node.js 22+** — required for native `fetch` and ESM support. (Node 20 still works but is nearing end-of-life; CI tests on Node 22 and 24.)
 - **Anthropic API key** — set as the `ANTHROPIC_API_KEY` environment variable.
 
 ### Install
