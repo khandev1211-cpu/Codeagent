@@ -1,80 +1,94 @@
-"use strict";
-
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { join } from "node:path";
-import { readFileSync, writeFileSync, unlinkSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
-import agent from "../../src/agent/orchestrator";
+import { Orchestrator } from "../../src/agent/orchestrator.js";
+import { createDefaultRegistry } from "../../src/tools/index.js";
+import { createConfirmer } from "../../src/safety/confirm.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const testFilePath = join(__dirname, "__test__", "example.js");
+const testDir = join(__dirname, "__test__");
+const testFilePath = join(testDir, "example.js");
 
-// Mock the agent's tool calls to avoid actual file system modifications
-vi.mock("../../src/tools/registry", () => ({
-  default: {
-    editFile: vi.fn(),
-    writeFile: vi.fn(),
-    runBash: vi.fn(),
-    readFile: vi.fn(),
-    listDir: vi.fn(),
-    searchCode: vi.fn(),
-  },
-}));
+// The file content we seed on disk. The \${name} is escaped so it is written
+// as the literal text "${name}" rather than interpolated by this template.
+const originalContent = `export function greet(name) {
+  return \`Hello, \${name}!\`;
+}`;
 
-// Mock the safety confirmation to auto-confirm for tests
-vi.mock("../../src/safety/confirm", () => ({
-  default: vi.fn(() => Promise.resolve(true)),
-}));
+function fakeProvider(responses) {
+  let call = 0;
+  return {
+    async send() {
+      const r = responses[Math.min(call, responses.length - 1)];
+      call += 1;
+      return r;
+    },
+    countTokens() {
+      return 100;
+    },
+  };
+}
 
-// Setup a test file before each test
 beforeEach(() => {
-  const testDir = join(__dirname, "__test__");
-  if (!existsSync(testDir)) {
-    require("node:fs").mkdirSync(testDir);
-  }
-  writeFileSync(
-    testFilePath,
-    `export function greet(name) {
-  return \`Hello, ${name}!\`;
-}`
-  );
+  if (!existsSync(testDir)) mkdirSync(testDir, { recursive: true });
+  writeFileSync(testFilePath, originalContent);
 });
 
-// Cleanup after each test
 afterEach(() => {
-  if (existsSync(testFilePath)) {
-    unlinkSync(testFilePath);
-  }
-  vi.clearAllMocks();
+  if (existsSync(testFilePath)) unlinkSync(testFilePath);
 });
 
 describe("Agent Coding Capabilities (E2E)", () => {
   it("should add a new function to an existing file", async () => {
-    const goal = "Add a new function called 'farewell' that takes a name and returns 'Goodbye, {name}!'.";
-    const sessionId = "test-session";
-    
-    // Mock the agent's tool calls
-    const { editFile } = require("../../src/tools/registry").default;
-    editFile.mockImplementation(({ new_content }) => {
-      // Simulate the file edit
-      writeFileSync(testFilePath, new_content);
-      return Promise.resolve({ success: true });
+    const newContent = `export function greet(name) {
+  return \`Hello, \${name}!\`;
+}
+
+export function farewell(name) {
+  return \`Goodbye, \${name}!\`;
+}
+`;
+
+    // Simulate the model deciding to edit the file via the real edit_file tool.
+    const provider = fakeProvider([
+      {
+        content: [
+          {
+            type: "tool_use",
+            id: "1",
+            name: "edit_file",
+            input: {
+              path: "example.js",
+              old_content: originalContent,
+              new_content: newContent,
+            },
+          },
+        ],
+        usage: {},
+        stopReason: "tool_use",
+      },
+      { content: [{ type: "text", text: "Done." }], usage: {}, stopReason: "end_turn" },
+    ]);
+
+    const orchestrator = new Orchestrator({
+      provider,
+      toolRegistry: createDefaultRegistry(),
+      confirm: createConfirmer({ config: { yolo: true } }),
+      config: { maxIterationsPerTurn: 5, yolo: true, allowedWritePaths: ["."] },
+      logger: undefined,
     });
-    
-    // Mock readFile to return the test file's content
-    const { readFile } = require("../../src/tools/registry").default;
-    readFile.mockImplementation(() => {
-      return Promise.resolve({ content: readFileSync(testFilePath, "utf-8") });
+
+    await orchestrator.runTurn({
+      messages: [],
+      userInput: "Add a farewell function",
+      system: "sys",
+      cwd: testDir,
     });
-    
-    // Run the agent
-    await agent.run({ goal, sessionId });
-    
-    // Verify the file was edited correctly
+
     const updatedContent = readFileSync(testFilePath, "utf-8");
     expect(updatedContent).toContain("function farewell(name)");
-    expect(updatedContent).toContain("return \`Goodbye, ${name}!\`;");
-    expect(editFile).toHaveBeenCalled();
+    expect(updatedContent).toContain("return `Goodbye, ${name}!`;");
   });
 });
