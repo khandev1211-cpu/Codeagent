@@ -23,12 +23,14 @@ jobs:
   publish:
     name: Publish to npm
     runs-on: ubuntu-latest
+    # See ci.yml for why these are pinned to v5 specifically (Node 24
+    # runtime requirement, not just "latest").
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24.x
           cache: npm

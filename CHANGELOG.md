@@ -14,6 +14,8 @@ All notable changes to this project are documented here (Keep a Changelog format
 - New docs: `docs/16` (Claude Code feature-parity audit, driving the project's forward roadmap), `docs/17` (Hooks), `docs/18` (provider management & admin system prompt).
 
 ### Fixed
+- `test/e2e/agent-coding.test.js` — rewritten as a genuine end-to-end test. It previously imported a nonexistent default export, mocked the tool registry with a shape that didn't match the real class, and used `require()` inside an ESM module; it had never actually run. Now runs the real `Orchestrator` against the real `ToolRegistry` and real tools (actual file I/O in a temp directory), faking only the LLM response — confirmed via real CI, not just locally.
+- `actions/checkout@v4` / `actions/setup-node@v4` bumped to `@v5` in both workflows — v4 still targets the Node 20 runtime GitHub is removing from Actions runners in September 2026; v5 runs natively on Node 24.
 - `codeagent setup` used to discard every choice you made the moment the process exited — nothing was ever written to disk. It now persists to `~/.codeagentrc` as each step completes.
 - An API key saved to the OS keychain during setup was never actually read back at runtime (`useKeychain: true` had no effect). Every provider now resolves its key from the environment variable first, falling back to the keychain.
 - A crash in `codeagent setup`'s hidden API-key input: typing any character would throw `char.charCodeAt is not a function`, because keystrokes arrived as raw `Buffer`s rather than strings. Hidden input now also handles pasted (multi-character) input and falls back to a visible prompt on a non-TTY stdin instead of crashing.
@@ -21,7 +23,6 @@ All notable changes to this project are documented here (Keep a Changelog format
 - The stray `<![CDATA[ ... ]]>` wrapper around the entire README that would have rendered broken on GitHub/npm.
 
 ### Known issues
-- `test/e2e/agent-coding.test.js` fails — it predates this changelog and doesn't match the real `Orchestrator`/`ToolRegistry` shapes. Tracked in `PLAN.md`, not yet fixed.
 - `package.json`'s `engines.node` (`>=18.0.0`) is stale — Node 18 and 20 are both past their upstream end-of-life as of mid-2026. CI now targets 22.x/24.x; bumping the declared minimum is a deliberate follow-up, not done as part of this release.
 
 ## [0.1.0] - 2026-07-11
