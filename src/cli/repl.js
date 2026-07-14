@@ -4,6 +4,7 @@ import { ContextManager, buildProjectContext } from "../agent/context.js";
 import { buildSystemPrompt } from "../agent/systemPrompt.js";
 import { planTurn, shouldPlan } from "../agent/planner.js";
 import { createConfirmer } from "../safety/confirm.js";
+import { SkillRegistry } from "../skills/index.js";
 import { renderToolCall, renderToolDeclined, renderError, renderText } from "./render.js";
 import { LimitExceededError } from "../utils/errors.js";
 
@@ -33,6 +34,7 @@ export async function startRepl({
   });
 
   const projectContext = await buildProjectContext(cwd);
+  const skillRegistry = new SkillRegistry({ cwd, logger });
 
   renderText(`codeagent session ${session.id} — ${session.provider}/${session.model}`);
   renderText("Type your request, or Ctrl+C to exit.\n");
@@ -62,6 +64,7 @@ export async function startRepl({
       plannerOutput,
       customAddendum: config.customSystemPromptAddendum,
       adminPrompt: config.adminSystemPrompt,
+      skillsIndex: skillRegistry.formatIndexForPrompt(),
     });
 
     try {

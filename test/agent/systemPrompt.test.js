@@ -57,4 +57,28 @@ describe("buildSystemPrompt", () => {
     const input = { adminPrompt: "A", projectContext: { tree: "B" }, plannerOutput: "C", customAddendum: "D" };
     expect(buildSystemPrompt(input)).toBe(buildSystemPrompt(input));
   });
+
+  it("includes the skills index, positioned after the admin prompt and before project context", () => {
+    const prompt = buildSystemPrompt({
+      adminPrompt: "Prefer TypeScript.",
+      skillsIndex: "- **commit-message**: writes commit messages (read `x/SKILL.md`)",
+      projectContext: { tree: "src/" },
+    });
+    const adminIdx = prompt.indexOf("Prefer TypeScript");
+    const skillsIdx = prompt.indexOf("Available skills");
+    const projectIdx = prompt.indexOf("Project context");
+    expect(adminIdx).toBeLessThan(skillsIdx);
+    expect(skillsIdx).toBeLessThan(projectIdx);
+    expect(prompt).toContain("commit-message");
+  });
+
+  it("omits the skills section entirely when skillsIndex is null (no skills configured)", () => {
+    const prompt = buildSystemPrompt({ skillsIndex: null });
+    expect(prompt).not.toMatch(/Available skills/);
+  });
+
+  it("frames skills as read-on-demand, not something to read preemptively", () => {
+    const prompt = buildSystemPrompt({ skillsIndex: "- **x**: y" });
+    expect(prompt).toMatch(/only if it's actually relevant/);
+  });
 });

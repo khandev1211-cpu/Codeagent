@@ -41,7 +41,7 @@ The project's direction is a self-hosted, provider-agnostic agent with the same 
 | 🧙 **Guided setup** | `codeagent setup` walks through provider, API key, and model selection. |
 | 📜 **Scriptable** | One-shot mode with proper exit codes — works in CI as well as interactively. |
 | 🧩 **Extensible by design** | Add new tools, providers, or config options without touching the core loop. |
-| 🚧 **Skills & Plugins** | *Planned* — pluggable capability modules and third-party tool packages. Not yet implemented; see Roadmap. |
+| ✅ **Skills** | Discoverable `SKILL.md` capabilities, read on demand — see Roadmap. Plugins still planned. |
 
 ---
 
@@ -57,7 +57,7 @@ Where codeagent is headed, and honestly, what's real today versus what's still d
 | API key in OS keychain | ✅ Shipped | Read *and* write now — `codeagent setup` can save a key to the keychain and it's actually read back at boot (`docs/18`). Also fixed a real shell-injection risk in how keys were passed to `security`/`pass`/`cmdkey`. |
 | Admin system prompt | ✅ Shipped (v1) | `codeagent system-prompt set "<text>"` — global, priority-layered over project context, doesn't touch the Safety Layer or Hooks (`docs/18`). |
 | **Hooks** (lifecycle events: pre/post tool use, session start/end) | ✅ Shipped (v1) | Shell-command hooks only; `PreToolUse` can block, `PostToolUse` can add context. Project-scoped (`.codeagent/hooks.json`) only — see `docs/17` and `codeagent hooks`. |
-| **Skills** (discoverable `SKILL.md` folders, progressive disclosure) | 🚧 Planned | The headline ask. Blocked on disambiguating "skills" from `docs/05`'s current tool-synonym usage first. |
+| **Skills** (discoverable `SKILL.md` folders, progressive disclosure) | ✅ Shipped (v1) | Project-scoped (`.codeagent/skills/`) only for now. Two real examples ship with the repo. `allowed-tools` is parsed but not yet enforced — waiting on Permission Rules below. See `docs/19` and `codeagent skills`. |
 | Fine-grained permission rules & Plan Mode | 🚧 Planned | Evolves the existing confirm/`--yolo` safety layer rather than replacing it. |
 | **Subagents** | 🚧 Planned | Touches `orchestrator.js` directly, so per `docs/11` this needs a design pass, not a routine PR. Also reverses `docs/01`'s current "not a multi-agent framework" non-goal — that doc will be updated when this ships. |
 | **MCP client** (connect external tool servers) | 🚧 Planned | Separate from the LLM provider adapters above — this is a new *tool* source, not a new provider. |
@@ -136,6 +136,7 @@ codeagent undo <ref>             Revert a specific recorded change
 codeagent sessions               List saved sessions for this project
 codeagent config                 Print the fully resolved config (API key redacted)
 codeagent hooks                  List hooks configured for this project (.codeagent/hooks.json)
+codeagent skills                  List skills discovered in .codeagent/skills/
 codeagent providers               List every configured provider, which is active, and its key source
 codeagent use <provider> [model]  Switch the active provider/model (persists; history carries over)
 codeagent system-prompt [show|set <text>|clear]   Manage your global admin system prompt
@@ -341,7 +342,7 @@ Full architecture and design docs live in [`docs/`](./docs):
 | [02 — System Architecture](./docs/02-system-architecture.md) | Module map, data flow, layer responsibilities |
 | [03 — Package Structure](./docs/03-package-structure.md) | Folder layout, package.json, module boundaries |
 | [04 — Agent Core & Loop](./docs/04-agent-core-and-loop.md) | The orchestrator loop, limits, error handling |
-| [05 — Tools & Skills](./docs/05-tools-and-skills.md) | Every tool's schema, contract, and behavior |
+| [05 — Tools](./docs/05-tools.md) | Every tool's schema, contract, and behavior |
 | [06 — Provider Layer](./docs/06-provider-layer.md) | LLM abstraction, Anthropic adapter, retry logic |
 | [07 — Safety & Permissions](./docs/07-safety-and-permissions.md) | Destructive-op gating, confirmation flow, `--yolo` |
 | [08 — Context & Session Management](./docs/08-context-and-session-management.md) | Context window handling, persistence, undo |
@@ -355,6 +356,7 @@ Full architecture and design docs live in [`docs/`](./docs):
 | [16 — Claude Code Parity Audit](./docs/16-claude-code-parity-audit.md) | Feature-by-feature audit vs. current Claude Code; what's in scope, what isn't, and why |
 | [17 — Hooks](./docs/17-hooks.md) | Lifecycle event system — PreToolUse/PostToolUse/SessionStart/SessionEnd |
 | [18 — Provider Management & Admin Prompt](./docs/18-provider-management-and-admin-prompt.md) | Multi-provider config, persisted setup, shared history across providers, admin system prompt |
+| [19 — Skills](./docs/19-skills.md) | `SKILL.md` discovery, progressive disclosure, `.codeagent/skills/` |
 
 ---
 

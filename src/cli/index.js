@@ -23,6 +23,7 @@ import { runSetupWizard } from "./setup.js";
 import { handleModelsCommand } from "./models.js";
 import { handleMistralModelsCommand } from "./mistralModels.js";
 import { HookRegistry, HOOK_EVENTS, loadHooksConfig } from "../hooks/index.js";
+import { SkillRegistry } from "../skills/index.js";
 
 function buildCliConfigOverrides(opts) {
   const overrides = {};
@@ -53,10 +54,12 @@ async function oneShot(request, { config, logger, cwd }) {
   });
 
   const projectContext = await buildProjectContext(cwd);
+  const skillRegistry = new SkillRegistry({ cwd, logger });
   const system = buildSystemPrompt({
     projectContext,
     customAddendum: config.customSystemPromptAddendum,
     adminPrompt: config.adminSystemPrompt,
+    skillsIndex: skillRegistry.formatIndexForPrompt(),
   });
 
   await hookRegistry.run(HOOK_EVENTS.SESSION_START, { sessionId: session.id, cwd });
@@ -159,6 +162,20 @@ async function sessionsCommand({ cwd }) {
 
 function configCommand({ config }) {
   renderText(JSON.stringify(redactedConfig(config), null, 2));
+}
+
+function skillsCommand({ cwd }) {
+  const registry = new SkillRegistry({ cwd, logger: { warn: (msg) => renderText(`(warning) ${msg}`) } });
+  const skills = registry.list();
+  if (skills.length === 0) {
+    renderText('No skills configured. Add .codeagent/skills/<name>/SKILL.md to define one — see docs/19.');
+    return;
+  }
+  for (const skill of skills) {
+    renderText(`${skill.name}`);
+    renderText(`  ${skill.description}`);
+    renderText(`  file: ${skill.path}${skill.allowedTools ? `  allowed-tools: ${skill.allowedTools.join(", ")}` : ""}`);
+  }
 }
 
 function hooksCommand({ cwd }) {
@@ -305,6 +322,13 @@ export async function run(argv) {
         renderError(err.message);
         process.exitCode = 1;
       }
+    });
+
+  program
+    .command("skills")
+    .description("List skills discovered in .codeagent/skills/")
+    .action(() => {
+      skillsCommand({ cwd: process.cwd() });
     });
 
   program

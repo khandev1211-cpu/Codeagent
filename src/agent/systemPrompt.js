@@ -16,6 +16,10 @@ function renderAdminPrompt(adminPrompt) {
   return `## Standing instructions from the administrator (priority)\nSet once via "codeagent setup" or "codeagent system-prompt set", these apply across every project on this machine and take priority over the project context and any other instructions below — follow them unless they conflict with the tool-use conventions above.\n\n${adminPrompt}`;
 }
 
+function renderSkillsIndex(skillsIndex) {
+  return `## Available skills\nThese are optional, discoverable instructions for specific kinds of tasks. Read a skill's file (via read_file) only if it's actually relevant to what you're doing right now — don't read all of them preemptively, and don't mention this list to the user unless it's relevant.\n\n${skillsIndex}`;
+}
+
 function renderProjectContext({ tree, manifest, readme }) {
   let section = "## Project context\n";
   if (tree) section += `\nDirectory tree:\n${tree}`;
@@ -30,11 +34,14 @@ function renderProjectContext({ tree, manifest, readme }) {
  * planner output) (doc 04). Order matters here: base conventions first
  * (the agent needs to know how to use its tools before anything else),
  * then the admin's standing instructions (docs/18 — global, priority, but
- * not a full replacement), then everything project-specific.
+ * not a full replacement), then what capabilities exist (skills — docs/19,
+ * an index only, never full skill content), then everything project-
+ * specific.
  */
-export function buildSystemPrompt({ projectContext, plannerOutput, customAddendum, adminPrompt }) {
+export function buildSystemPrompt({ projectContext, plannerOutput, customAddendum, adminPrompt, skillsIndex }) {
   const parts = [BASE_TEMPLATE];
   if (adminPrompt) parts.push(renderAdminPrompt(adminPrompt));
+  if (skillsIndex) parts.push(renderSkillsIndex(skillsIndex));
   if (projectContext) parts.push(renderProjectContext(projectContext));
   if (plannerOutput) parts.push(`## Current plan\n${plannerOutput}`);
   if (customAddendum) parts.push(`## Additional instructions\n${customAddendum}`);
