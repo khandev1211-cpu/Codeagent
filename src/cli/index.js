@@ -17,19 +17,21 @@ import { ContextManager, buildProjectContext } from "../agent/context.js";
 import { buildSystemPrompt } from "../agent/systemPrompt.js";
 import { createConfirmer } from "../safety/confirm.js";
 import { startRepl } from "./repl.js";
-import { renderToolCall, renderToolDeclined, renderText, renderError } from "./render.js";
+import { renderToolCall, renderToolDeclined, renderToolPlanned, renderText, renderError } from "./render.js";
 import { ConfigError, LimitExceededError } from "../utils/errors.js";
 import { runSetupWizard } from "./setup.js";
 import { handleModelsCommand } from "./models.js";
 import { handleMistralModelsCommand } from "./mistralModels.js";
 import { HookRegistry, HOOK_EVENTS, loadHooksConfig } from "../hooks/index.js";
 import { SkillRegistry } from "../skills/index.js";
+import { loadPermissionRules } from "../safety/permissionRules.js";
 
 function buildCliConfigOverrides(opts) {
   const overrides = {};
   if (opts.model) overrides.model = opts.model;
   if (opts.provider) overrides.provider = opts.provider;
   if (opts.yolo) overrides.yolo = true;
+  if (opts.plan) overrides.planMode = true;
   return overrides;
 }
 
@@ -42,6 +44,7 @@ async function oneShot(request, { config, logger, cwd }) {
   const confirm = createConfirmer({ config, logger });
   const contextManager = new ContextManager({ provider });
   const hookRegistry = new HookRegistry({ cwd, logger });
+  const { rules: permissionRules } = loadPermissionRules({ cwd });
   const orchestrator = new Orchestrator({
     provider,
     toolRegistry,
@@ -51,6 +54,7 @@ async function oneShot(request, { config, logger, cwd }) {
     contextManager,
     diffTracker,
     hookRegistry,
+    permissionRules,
   });
 
   const projectContext = await buildProjectContext(cwd);
@@ -77,6 +81,8 @@ async function oneShot(request, { config, logger, cwd }) {
           if (event.reason === "no-tty") process.exitCode = 1;
         }
         if (event.type === "tool_blocked") renderToolDeclined(event.tool, `hook: ${event.reason}`);
+        if (event.type === "tool_denied") renderToolDeclined(event.tool, `permission rule: ${event.rule.pattern}`);
+        if (event.type === "tool_planned") renderToolPlanned(event.description);
         if (event.type === "final_text") renderText(event.text);
         if (event.type === "tool_error") renderError(`${event.tool}: ${event.error.message}`);
       },
@@ -120,9 +126,21 @@ async function interactive({ config, logger, cwd, resumeId }) {
 
   const diffTracker = sessionStore.diffTrackerFor(session);
   const hookRegistry = new HookRegistry({ cwd, logger });
+  const { rules: permissionRules } = loadPermissionRules({ cwd });
   await hookRegistry.run(HOOK_EVENTS.SESSION_START, { sessionId: session.id, cwd });
 
-  await startRepl({ provider, toolRegistry, config, logger, session, sessionStore, diffTracker, cwd, hookRegistry });
+  await startRepl({
+    provider,
+    toolRegistry,
+    config,
+    logger,
+    session,
+    sessionStore,
+    diffTracker,
+    cwd,
+    hookRegistry,
+    permissionRules,
+  });
 
   await hookRegistry.run(HOOK_EVENTS.SESSION_END, { sessionId: session.id, cwd });
 }
@@ -162,6 +180,25 @@ async function sessionsCommand({ cwd }) {
 
 function configCommand({ config }) {
   renderText(JSON.stringify(redactedConfig(config), null, 2));
+}
+
+function permissionsCommand({ cwd }) {
+  let rulesConfig;
+  try {
+    rulesConfig = loadPermissionRules({ cwd });
+  } catch (err) {
+    renderError(err.message);
+    process.exitCode = 1;
+    return;
+  }
+  if (rulesConfig.rules.length === 0) {
+    renderText("No permission rules configured. Add .codeagent/permissions.json to define some — see docs/20.");
+    return;
+  }
+  for (const rule of rulesConfig.rules) {
+    renderText(`${rule.behavior === "deny" ? "deny " : "allow"}  [${rule.tool}] ${rule.pattern}`);
+  }
+  renderText('\nDeny always wins over allow when both match the same call. Run with --plan to preview destructive actions without performing them.');
 }
 
 function skillsCommand({ cwd }) {
@@ -294,6 +331,7 @@ export async function run(argv) {
     .argument("[request]", "One-shot request; omit to start an interactive session")
     .option("--resume <id>", "Resume a saved session ('last' for most recent)")
     .option("--yolo", "Skip destructive-action confirmations for this run")
+    .option("--plan", "Plan mode: describe destructive actions instead of performing them (docs/20)")
     .option("--model <name>", "Override the configured model")
     .option("--provider <name>", "Override the configured provider");
 
@@ -322,6 +360,13 @@ export async function run(argv) {
         renderError(err.message);
         process.exitCode = 1;
       }
+    });
+
+  program
+    .command("permissions")
+    .description("List permission rules configured for this project (.codeagent/permissions.json)")
+    .action(() => {
+      permissionsCommand({ cwd: process.cwd() });
     });
 
   program

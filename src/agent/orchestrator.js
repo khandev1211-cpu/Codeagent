@@ -1,4 +1,6 @@
 import { isDestructive } from "../safety/policy.js";
+import { evaluatePermissionRules } from "../safety/permissionRules.js";
+import { describePlannedAction } from "../safety/planMode.js";
 import { LimitExceededError, ToolError } from "../utils/errors.js";
 import { HOOK_EVENTS, NULL_HOOK_REGISTRY } from "../hooks/index.js";
 
@@ -17,6 +19,7 @@ export class Orchestrator {
     contextManager,
     diffTracker,
     hookRegistry = NULL_HOOK_REGISTRY,
+    permissionRules = [],
   }) {
     this.provider = provider;
     this.toolRegistry = toolRegistry;
@@ -26,6 +29,7 @@ export class Orchestrator {
     this.contextManager = contextManager;
     this.diffTracker = diffTracker;
     this.hookRegistry = hookRegistry;
+    this.permissionRules = permissionRules;
   }
 
   async runTurn({ messages, userInput, system, cwd, onEvent = () => {} }) {
@@ -110,7 +114,41 @@ export class Orchestrator {
           continue;
         }
 
-        const decision = await this.confirm(tool, block.input);
+        const permissionResult = evaluatePermissionRules(this.permissionRules, tool.name, block.input);
+        if (permissionResult.decision === "deny") {
+          // A deny rule is a hard stop — same strength as a hook block,
+          // reached before confirm() so there's never an interactive
+          // prompt for something explicit policy already forbade (docs/20).
+          onEvent({ type: "tool_denied", tool: tool.name, rule: permissionResult.rule });
+          toolResultContent.push({
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: `Denied by permission rule: ${tool.name} matching "${permissionResult.rule.pattern}"`,
+            is_error: true,
+          });
+          continue;
+        }
+
+        if (this.config?.planMode && isDestructive(tool)) {
+          // Plan Mode is a structural guarantee, not a confirmation the
+          // model can talk past: tool.execute() is never called below for
+          // any destructive tool while this is active, regardless of what
+          // permission rules or confirm() would otherwise decide (docs/20).
+          const description = describePlannedAction(tool.name, block.input);
+          onEvent({ type: "tool_planned", tool: tool.name, description });
+          toolResultContent.push({
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: description,
+            is_error: false,
+          });
+          continue;
+        }
+
+        const decision =
+          permissionResult.decision === "allow"
+            ? { allowed: true, preAuthorized: true, rule: permissionResult.rule }
+            : await this.confirm(tool, block.input);
         if (!decision.allowed) {
           onEvent({ type: "tool_declined", tool: tool.name, reason: decision.reason });
           toolResultContent.push({

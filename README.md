@@ -25,7 +25,7 @@
 
 Unlike chat-based coding assistants that only print code blocks for you to manually copy, codeagent **acts directly** on your codebase: reading, writing, editing files, searching across your project, and executing shell commands — all driven by an LLM that decides which tools to call and when.
 
-The project's direction is a self-hosted, provider-agnostic agent with the same shape as Claude Code: an agent loop, a growing tool set, and — on the roadmap — a **Skills** system and a **Plugin** system for extending it without touching the core. See [Roadmap](#roadmap) below for what's shipped versus what's planned.
+The project's direction is a self-hosted, provider-agnostic agent with the same shape as Claude Code: an agent loop, a growing tool set, Hooks, Skills, fine-grained permission rules, and Plan Mode all shipped — a **Plugin** system is what's still ahead. See [Roadmap](#roadmap) below for what's shipped versus what's planned.
 
 ---
 
@@ -34,7 +34,7 @@ The project's direction is a self-hosted, provider-agnostic agent with the same 
 | Capability | Description |
 |---|---|
 | 🧠 **Agentic, not just chat** | Calls tools directly (read/write/edit files, search code, run shell commands) instead of printing diffs for you to paste. |
-| 🛡️ **Safe by default** | Every destructive action requires confirmation unless you explicitly pass `--yolo`. |
+| 🛡️ **Safe by default** | Every destructive action requires confirmation unless you explicitly pass `--yolo`, refined by fine-grained allow/deny rules and a `--plan` read-only mode — see `docs/20`. |
 | 🔄 **Resumable sessions** | Kill the process and pick up exactly where you left off — no context lost. |
 | ↩️ **Undo built in** | Revert the agent's most recent file changes without touching git. |
 | 🔌 **Six providers today** | Anthropic, OpenRouter, Mistral, Groq, Cerebras, and Ollama — switch with `--provider` and `--model`. |
@@ -57,8 +57,8 @@ Where codeagent is headed, and honestly, what's real today versus what's still d
 | API key in OS keychain | ✅ Shipped | Read *and* write now — `codeagent setup` can save a key to the keychain and it's actually read back at boot (`docs/18`). Also fixed a real shell-injection risk in how keys were passed to `security`/`pass`/`cmdkey`. |
 | Admin system prompt | ✅ Shipped (v1) | `codeagent system-prompt set "<text>"` — global, priority-layered over project context, doesn't touch the Safety Layer or Hooks (`docs/18`). |
 | **Hooks** (lifecycle events: pre/post tool use, session start/end) | ✅ Shipped (v1) | Shell-command hooks only; `PreToolUse` can block, `PostToolUse` can add context. Project-scoped (`.codeagent/hooks.json`) only — see `docs/17` and `codeagent hooks`. |
-| **Skills** (discoverable `SKILL.md` folders, progressive disclosure) | ✅ Shipped (v1) | Project-scoped (`.codeagent/skills/`) only for now. Two real examples ship with the repo. `allowed-tools` is parsed but not yet enforced — waiting on Permission Rules below. See `docs/19` and `codeagent skills`. |
-| Fine-grained permission rules & Plan Mode | 🚧 Planned | Evolves the existing confirm/`--yolo` safety layer rather than replacing it. |
+| **Skills** (discoverable `SKILL.md` folders, progressive disclosure) | ✅ Shipped (v1) | Project-scoped (`.codeagent/skills/`) only for now. Two real examples ship with the repo. `allowed-tools` is parsed but still not enforced — permission rules (below) landed, but nothing yet wires them to a skill's `allowed-tools` list specifically. See `docs/19` and `codeagent skills`. |
+| Fine-grained permission rules & Plan Mode | ✅ Shipped (v1) | Evolves the existing confirm/`--yolo` safety layer rather than replacing it — deny always wins over allow; `--plan` makes destructive tools describe instead of execute, for the whole session. Both verified against real tools and real files, not just unit tests. No in-REPL toggle yet (waiting on Slash Commands). See `docs/20`, `codeagent permissions`. |
 | **Subagents** | 🚧 Planned | Touches `orchestrator.js` directly, so per `docs/11` this needs a design pass, not a routine PR. Also reverses `docs/01`'s current "not a multi-agent framework" non-goal — that doc will be updated when this ships. |
 | **MCP client** (connect external tool servers) | 🚧 Planned | Separate from the LLM provider adapters above — this is a new *tool* source, not a new provider. |
 | **Plugins** (bundle Skills+Subagents+Hooks+MCP, install from GitHub/npm/local path) | 🚧 Planned | Deliberately last — in real Claude Code a plugin is a packaging format over the four items above, so building it first would ship an empty container. |
@@ -126,6 +126,7 @@ codeagent "do X"                 One-shot: run a single request, print result, e
 codeagent --resume <id>          Resume a specific saved session
 codeagent --resume last          Resume the most recent session for this project
 codeagent --yolo                 Skip destructive-action confirmations for this run
+codeagent --plan                 Plan mode: describe destructive actions instead of performing them
 codeagent --model <name>         Override the configured model for this run
 codeagent --provider <name>      Override the configured provider for this run
 codeagent setup                  Interactive first-time setup wizard (provider, key, model)
@@ -137,6 +138,7 @@ codeagent sessions               List saved sessions for this project
 codeagent config                 Print the fully resolved config (API key redacted)
 codeagent hooks                  List hooks configured for this project (.codeagent/hooks.json)
 codeagent skills                  List skills discovered in .codeagent/skills/
+codeagent permissions             List permission rules configured for this project (.codeagent/permissions.json)
 codeagent providers               List every configured provider, which is active, and its key source
 codeagent use <provider> [model]  Switch the active provider/model (persists; history carries over)
 codeagent system-prompt [show|set <text>|clear]   Manage your global admin system prompt
@@ -357,6 +359,7 @@ Full architecture and design docs live in [`docs/`](./docs):
 | [17 — Hooks](./docs/17-hooks.md) | Lifecycle event system — PreToolUse/PostToolUse/SessionStart/SessionEnd |
 | [18 — Provider Management & Admin Prompt](./docs/18-provider-management-and-admin-prompt.md) | Multi-provider config, persisted setup, shared history across providers, admin system prompt |
 | [19 — Skills](./docs/19-skills.md) | `SKILL.md` discovery, progressive disclosure, `.codeagent/skills/` |
+| [20 — Permission Rules & Plan Mode](./docs/20-permission-rules-and-plan-mode.md) | Fine-grained allow/deny rules, `--plan` read-only execution mode, precedence with Hooks and Safety |
 
 ---
 

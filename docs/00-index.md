@@ -1,6 +1,6 @@
 # codeagent — Documentation Index
 
-This is the full documentation set for **codeagent**, a terminal-native AI coding agent distributed as an npm package. Nineteen documents, each owning one concern so nothing is duplicated across files.
+This is the full documentation set for **codeagent**, a terminal-native AI coding agent distributed as an npm package. Twenty documents, each owning one concern so nothing is duplicated across files.
 
 | # | Document | Covers |
 |---|---|---|
@@ -23,6 +23,7 @@ This is the full documentation set for **codeagent**, a terminal-native AI codin
 | 17 | [Hooks](./17-hooks.md) | Lifecycle event system — PreToolUse/PostToolUse/SessionStart/SessionEnd, `.codeagent/hooks.json` |
 | 18 | [Provider Management & Admin Prompt](./18-provider-management-and-admin-prompt.md) | Multi-provider config, persisted setup, first-run detection, shared history across providers, admin system prompt |
 | 19 | [Skills](./19-skills.md) | `SKILL.md` discovery, progressive disclosure, `.codeagent/skills/` |
+| 20 | [Permission Rules & Plan Mode](./20-permission-rules-and-plan-mode.md) | Fine-grained allow/deny rules, `--plan` read-only execution mode, precedence order with Hooks and Safety |
 
 ## How to use this set
 

@@ -14,6 +14,15 @@ export const ConfigSchema = z.object({
   yolo: z.boolean().default(false),
   allowedWritePaths: z.array(z.string()).default(["."]),
   planningEnabled: z.boolean().default(false),
+  // Distinct from planningEnabled above, despite the similar name: that
+  // one (agent/planner.js) generates a task checklist shown before
+  // execution — a planning aid, execution still happens normally. This
+  // one (safety/planMode.js) makes destructive tools describe themselves
+  // instead of running at all, structurally, for the whole session — a
+  // read-only execution mode, matching Claude Code's actual "Plan Mode"
+  // naming (docs/20). They're unrelated and can be used independently or
+  // together.
+  planMode: z.boolean().default(false),
   customSystemPromptAddendum: z.string().optional(),
   logLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
   // Only read by the Ollama adapter (doc 06) — lets users point at a

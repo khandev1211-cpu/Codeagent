@@ -5,7 +5,7 @@ import { buildSystemPrompt } from "../agent/systemPrompt.js";
 import { planTurn, shouldPlan } from "../agent/planner.js";
 import { createConfirmer } from "../safety/confirm.js";
 import { SkillRegistry } from "../skills/index.js";
-import { renderToolCall, renderToolDeclined, renderError, renderText } from "./render.js";
+import { renderToolCall, renderToolDeclined, renderToolPlanned, renderError, renderText } from "./render.js";
 import { LimitExceededError } from "../utils/errors.js";
 
 export async function startRepl({
@@ -18,6 +18,7 @@ export async function startRepl({
   diffTracker,
   cwd,
   hookRegistry,
+  permissionRules = [],
 }) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const confirm = createConfirmer({ config, logger });
@@ -31,6 +32,7 @@ export async function startRepl({
     contextManager,
     diffTracker,
     hookRegistry,
+    permissionRules,
   });
 
   const projectContext = await buildProjectContext(cwd);
@@ -77,6 +79,8 @@ export async function startRepl({
           if (event.type === "tool_call") renderToolCall(event.tool, event.input);
           if (event.type === "tool_declined") renderToolDeclined(event.tool, event.reason);
           if (event.type === "tool_blocked") renderToolDeclined(event.tool, `hook: ${event.reason}`);
+          if (event.type === "tool_denied") renderToolDeclined(event.tool, `permission rule: ${event.rule.pattern}`);
+          if (event.type === "tool_planned") renderToolPlanned(event.description);
           if (event.type === "final_text") renderText(`\n${event.text}\n`);
           if (event.type === "tool_error") renderError(`${event.tool}: ${event.error.message}`);
         },

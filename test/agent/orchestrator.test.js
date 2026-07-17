@@ -289,3 +289,243 @@ describe("Orchestrator.runTurn with hooks (Phase 3 / doc 16)", () => {
     expect(result.history.at(-1).role).toBe("assistant");
   });
 });
+
+describe("Orchestrator.runTurn with permission rules and plan mode (Phase 5 / docs/20)", () => {
+  it("a deny rule blocks the call before confirm() or execute() ever run", async () => {
+    let confirmCalled = false;
+    let executeCalled = false;
+    const trackedBash = {
+      name: "run_bash",
+      description: "runs bash",
+      destructive: true,
+      input_schema: { type: "object", properties: {} },
+      async execute() {
+        executeCalled = true;
+        return { ok: true };
+      },
+    };
+    const provider = fakeProvider([
+      {
+        content: [{ type: "tool_use", id: "1", name: "run_bash", input: { command: "rm -rf /" } }],
+        usage: {},
+        stopReason: "tool_use",
+      },
+      { content: [{ type: "text", text: "ok" }], usage: {}, stopReason: "end_turn" },
+    ]);
+    const orchestrator = new Orchestrator({
+      provider,
+      toolRegistry: new ToolRegistry([trackedBash]),
+      confirm: async () => {
+        confirmCalled = true;
+        return { allowed: true };
+      },
+      config: { maxIterationsPerTurn: 5 },
+      permissionRules: [{ tool: "run_bash", pattern: "rm -rf*", behavior: "deny" }],
+    });
+    const events = [];
+    const result = await orchestrator.runTurn({
+      messages: [],
+      userInput: "x",
+      system: "s",
+      cwd: "/tmp",
+      onEvent: (e) => events.push(e),
+    });
+
+    expect(confirmCalled).toBe(false);
+    expect(executeCalled).toBe(false);
+    expect(events.some((e) => e.type === "tool_denied")).toBe(true);
+    const toolResultMsg = result.history.find(
+      (m) => Array.isArray(m.content) && m.content[0]?.type === "tool_result"
+    );
+    expect(toolResultMsg.content[0].is_error).toBe(true);
+    expect(toolResultMsg.content[0].content).toMatch(/Denied by permission rule/);
+  });
+
+  it("an allow rule skips confirm() but the call still actually executes", async () => {
+    let confirmCalled = false;
+    let executeCalled = false;
+    const trackedBash = {
+      name: "run_bash",
+      description: "runs bash",
+      destructive: true,
+      input_schema: { type: "object", properties: {} },
+      async execute() {
+        executeCalled = true;
+        return { ok: true };
+      },
+    };
+    const provider = fakeProvider([
+      {
+        content: [{ type: "tool_use", id: "1", name: "run_bash", input: { command: "npm test" } }],
+        usage: {},
+        stopReason: "tool_use",
+      },
+      { content: [{ type: "text", text: "ok" }], usage: {}, stopReason: "end_turn" },
+    ]);
+    const orchestrator = new Orchestrator({
+      provider,
+      toolRegistry: new ToolRegistry([trackedBash]),
+      confirm: async () => {
+        confirmCalled = true;
+        return { allowed: true };
+      },
+      config: { maxIterationsPerTurn: 5 },
+      permissionRules: [{ tool: "run_bash", pattern: "npm test*", behavior: "allow" }],
+    });
+    await orchestrator.runTurn({ messages: [], userInput: "x", system: "s", cwd: "/tmp" });
+
+    expect(confirmCalled).toBe(false); // pre-authorized by the rule, never asked
+    expect(executeCalled).toBe(true); // but the action genuinely happened
+  });
+
+  it("plan mode intercepts a destructive tool: execute() is never called, a description is returned instead", async () => {
+    let executeCalled = false;
+    const trackedWrite = {
+      name: "write_file",
+      description: "writes a file",
+      destructive: true,
+      input_schema: { type: "object", properties: {} },
+      async execute() {
+        executeCalled = true;
+        return { ok: true };
+      },
+    };
+    const provider = fakeProvider([
+      {
+        content: [
+          { type: "tool_use", id: "1", name: "write_file", input: { path: "x.js", content: "hi" } },
+        ],
+        usage: {},
+        stopReason: "tool_use",
+      },
+      { content: [{ type: "text", text: "ok" }], usage: {}, stopReason: "end_turn" },
+    ]);
+    const orchestrator = new Orchestrator({
+      provider,
+      toolRegistry: new ToolRegistry([trackedWrite]),
+      confirm: alwaysAllow,
+      config: { maxIterationsPerTurn: 5, planMode: true },
+    });
+    const events = [];
+    const result = await orchestrator.runTurn({
+      messages: [],
+      userInput: "x",
+      system: "s",
+      cwd: "/tmp",
+      onEvent: (e) => events.push(e),
+    });
+
+    expect(executeCalled).toBe(false);
+    expect(events.some((e) => e.type === "tool_planned")).toBe(true);
+    const toolResultMsg = result.history.find(
+      (m) => Array.isArray(m.content) && m.content[0]?.type === "tool_result"
+    );
+    expect(toolResultMsg.content[0].is_error).toBe(false);
+    expect(toolResultMsg.content[0].content).toMatch(/plan mode — not executed/);
+  });
+
+  it("plan mode does not affect non-destructive tools — they still actually execute", async () => {
+    let executeCalled = false;
+    const trackedRead = {
+      name: "read_file",
+      description: "reads a file",
+      destructive: false,
+      input_schema: { type: "object", properties: {} },
+      async execute() {
+        executeCalled = true;
+        return { ok: true, content: "file contents" };
+      },
+    };
+    const provider = fakeProvider([
+      {
+        content: [{ type: "tool_use", id: "1", name: "read_file", input: { path: "x.js" } }],
+        usage: {},
+        stopReason: "tool_use",
+      },
+      { content: [{ type: "text", text: "ok" }], usage: {}, stopReason: "end_turn" },
+    ]);
+    const orchestrator = new Orchestrator({
+      provider,
+      toolRegistry: new ToolRegistry([trackedRead]),
+      confirm: alwaysAllow,
+      config: { maxIterationsPerTurn: 5, planMode: true },
+    });
+    await orchestrator.runTurn({ messages: [], userInput: "x", system: "s", cwd: "/tmp" });
+
+    expect(executeCalled).toBe(true); // reads still happen — plan mode only guards writes/side effects
+  });
+
+  it("a deny rule takes precedence even over plan mode being active (denied before plan-mode check runs)", async () => {
+    let executeCalled = false;
+    const trackedWrite = {
+      name: "write_file",
+      description: "writes a file",
+      destructive: true,
+      input_schema: { type: "object", properties: {} },
+      async execute() {
+        executeCalled = true;
+        return { ok: true };
+      },
+    };
+    const provider = fakeProvider([
+      {
+        content: [
+          { type: "tool_use", id: "1", name: "write_file", input: { path: ".env", content: "SECRET=1" } },
+        ],
+        usage: {},
+        stopReason: "tool_use",
+      },
+      { content: [{ type: "text", text: "ok" }], usage: {}, stopReason: "end_turn" },
+    ]);
+    const orchestrator = new Orchestrator({
+      provider,
+      toolRegistry: new ToolRegistry([trackedWrite]),
+      confirm: alwaysAllow,
+      config: { maxIterationsPerTurn: 5, planMode: true },
+      permissionRules: [{ tool: "write_file", pattern: "*.env", behavior: "deny" }],
+    });
+    const events = [];
+    await orchestrator.runTurn({
+      messages: [],
+      userInput: "x",
+      system: "s",
+      cwd: "/tmp",
+      onEvent: (e) => events.push(e),
+    });
+
+    expect(executeCalled).toBe(false);
+    expect(events.some((e) => e.type === "tool_denied")).toBe(true);
+    expect(events.some((e) => e.type === "tool_planned")).toBe(false); // never reached that check
+  });
+
+  it("defaults to no permission rules and planMode off when neither is provided — identical to pre-Phase-5 behavior", async () => {
+    let executeCalled = false;
+    const trackedWrite = {
+      name: "write_file",
+      description: "writes a file",
+      destructive: true,
+      input_schema: { type: "object", properties: {} },
+      async execute() {
+        executeCalled = true;
+        return { ok: true };
+      },
+    };
+    const provider = fakeProvider([
+      {
+        content: [{ type: "tool_use", id: "1", name: "write_file", input: { path: "x.js", content: "hi" } }],
+        usage: {},
+        stopReason: "tool_use",
+      },
+      { content: [{ type: "text", text: "ok" }], usage: {}, stopReason: "end_turn" },
+    ]);
+    const orchestrator = new Orchestrator({
+      provider,
+      toolRegistry: new ToolRegistry([trackedWrite]),
+      confirm: alwaysAllow,
+      config: { maxIterationsPerTurn: 5 },
+      // no permissionRules, no planMode
+    });
+    await orchestrator.runTurn({ messages: [], userInput: "x", system: "s", cwd: "/tmp" });
+    expect(executeCalled).toBe(true);
+  });
+});
