@@ -26,6 +26,8 @@ import { HookRegistry, HOOK_EVENTS, loadHooksConfig } from "../hooks/index.js";
 import { SkillRegistry } from "../skills/index.js";
 import { loadPermissionRules } from "../safety/permissionRules.js";
 
+import { discoverProjectMemory, formatMemoryForPrompt } from "../agent/memory.js";
+
 function buildCliConfigOverrides(opts) {
   const overrides = {};
   if (opts.model) overrides.model = opts.model;
@@ -59,11 +61,14 @@ async function oneShot(request, { config, logger, cwd }) {
 
   const projectContext = await buildProjectContext(cwd);
   const skillRegistry = new SkillRegistry({ cwd, logger });
+  const memory = discoverProjectMemory(cwd);
+  const projectMemory = formatMemoryForPrompt(memory);
   const system = buildSystemPrompt({
     projectContext,
     customAddendum: config.customSystemPromptAddendum,
     adminPrompt: config.adminSystemPrompt,
     skillsIndex: skillRegistry.formatIndexForPrompt(),
+    projectMemory,
   });
 
   await hookRegistry.run(HOOK_EVENTS.SESSION_START, { sessionId: session.id, cwd });

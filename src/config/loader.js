@@ -46,32 +46,16 @@ export function loadConfig(cliArgs = {}, { cwd = process.cwd(), homedir = os.hom
   const globalConfig = readJsonIfExists(path.join(homedir, ".codeagentrc"));
   const projectConfig = readJsonIfExists(path.join(cwd, ".codeagent", "config.json"));
 
-  // If the CLI is switching provider, use the model/apiKeyEnvVar from the
-  // providers map if available, otherwise fall back to PROVIDER_DEFAULTS.
-  // Must override the global model/apiKeyEnvVar since those belong to the
-  // previously-active provider.
+  // If the CLI is switching provider without specifying model/apiKeyEnvVar,
+  // seed sensible per-provider defaults rather than leaving the wrong
+  // provider's defaults in place.
   let providerDefaults = {};
   const chosenProvider = cliArgs.provider || projectConfig.provider || globalConfig.provider;
-  if (chosenProvider) {
-    const configuredProvider = globalConfig.providers?.[chosenProvider];
-    if (configuredProvider?.model) {
-      providerDefaults = {
-        model: configuredProvider.model,
-        apiKeyEnvVar: configuredProvider.apiKeyEnvVar || PROVIDER_DEFAULTS[chosenProvider]?.apiKeyEnvVar,
-      };
-    } else if (PROVIDER_DEFAULTS[chosenProvider]) {
-      providerDefaults = { ...PROVIDER_DEFAULTS[chosenProvider] };
-    }
+  if (chosenProvider && PROVIDER_DEFAULTS[chosenProvider]) {
+    providerDefaults = { ...PROVIDER_DEFAULTS[chosenProvider] };
   }
 
-  // When CLI overrides the provider, strip the global model/apiKeyEnvVar
-  // so provider-specific defaults take precedence over the old active provider's settings.
-  const effectiveGlobal = cliArgs.provider
-    ? { ...globalConfig, model: undefined, apiKeyEnvVar: undefined }
-    : globalConfig;
-
-  // Merge order: providerDefaults (lowest), effectiveGlobal, projectConfig (higher), cliArgs (highest)
-  const merged = deepMerge(providerDefaults, effectiveGlobal, projectConfig, cliArgs);
+  const merged = deepMerge(providerDefaults, globalConfig, projectConfig, cliArgs);
 
   const result = ConfigSchema.safeParse(merged);
   if (!result.success) {

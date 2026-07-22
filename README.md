@@ -41,7 +41,7 @@ The project's direction is a self-hosted, provider-agnostic agent with the same 
 | 🧙 **Guided setup** | `codeagent setup` walks through provider, API key, and model selection. |
 | 📜 **Scriptable** | One-shot mode with proper exit codes — works in CI as well as interactively. |
 | 🧩 **Extensible by design** | Add new tools, providers, or config options without touching the core loop. |
-| ✅ **Skills** | Discoverable `SKILL.md` capabilities, read on demand — see Roadmap. Plugins still planned. |
+| ✅ **Skills** | 102 discoverable `SKILL.md` capabilities ship with the repo, read on demand — see Roadmap. Plugins still planned. |
 
 ---
 
@@ -57,7 +57,7 @@ Where codeagent is headed, and honestly, what's real today versus what's still d
 | API key in OS keychain | ✅ Shipped | Read *and* write now — `codeagent setup` can save a key to the keychain and it's actually read back at boot (`docs/18`). Also fixed a real shell-injection risk in how keys were passed to `security`/`pass`/`cmdkey`. |
 | Admin system prompt | ✅ Shipped (v1) | `codeagent system-prompt set "<text>"` — global, priority-layered over project context, doesn't touch the Safety Layer or Hooks (`docs/18`). |
 | **Hooks** (lifecycle events: pre/post tool use, session start/end) | ✅ Shipped (v1) | Shell-command hooks only; `PreToolUse` can block, `PostToolUse` can add context. Project-scoped (`.codeagent/hooks.json`) only — see `docs/17` and `codeagent hooks`. |
-| **Skills** (discoverable `SKILL.md` folders, progressive disclosure) | ✅ Shipped (v1) | Project-scoped (`.codeagent/skills/`) only for now. Two real examples ship with the repo. `allowed-tools` is parsed but still not enforced — permission rules (below) landed, but nothing yet wires them to a skill's `allowed-tools` list specifically. See `docs/19` and `codeagent skills`. |
+| **Skills** (discoverable `SKILL.md` folders, progressive disclosure) | ✅ Shipped | Project-scoped (`.codeagent/skills/`) only for now. **102 skills ship with the repo**, spanning languages, testing, git workflow, code quality, APIs, databases, security, DevOps, frontend, docs, performance, debugging, concurrency, architecture, cloud, mobile, and more. Real, measured cost: the index alone is ~6,500 tokens on every turn at this scale — see `docs/19`. `allowed-tools` is parsed but still not enforced against skills specifically. See `codeagent skills`. |
 | Fine-grained permission rules & Plan Mode | ✅ Shipped (v1) | Evolves the existing confirm/`--yolo` safety layer rather than replacing it — deny always wins over allow; `--plan` makes destructive tools describe instead of execute, for the whole session. Both verified against real tools and real files, not just unit tests. No in-REPL toggle yet (waiting on Slash Commands). See `docs/20`, `codeagent permissions`. |
 | **Subagents** | 🚧 Planned | Touches `orchestrator.js` directly, so per `docs/11` this needs a design pass, not a routine PR. Also reverses `docs/01`'s current "not a multi-agent framework" non-goal — that doc will be updated when this ships. |
 | **MCP client** (connect external tool servers) | 🚧 Planned | Separate from the LLM provider adapters above — this is a new *tool* source, not a new provider. |

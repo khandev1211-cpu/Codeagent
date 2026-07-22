@@ -38,10 +38,11 @@ function renderProjectContext({ tree, manifest, readme }) {
  * an index only, never full skill content), then everything project-
  * specific.
  */
-export function buildSystemPrompt({ projectContext, plannerOutput, customAddendum, adminPrompt, skillsIndex }) {
+export function buildSystemPrompt({ projectContext, plannerOutput, customAddendum, adminPrompt, skillsIndex, projectMemory }) {
   const parts = [BASE_TEMPLATE];
   if (adminPrompt) parts.push(renderAdminPrompt(adminPrompt));
   if (skillsIndex) parts.push(renderSkillsIndex(skillsIndex));
+  if (projectMemory) parts.push(projectMemory);
   if (projectContext) parts.push(renderProjectContext(projectContext));
   if (plannerOutput) parts.push(`## Current plan\n${plannerOutput}`);
   if (customAddendum) parts.push(`## Additional instructions\n${customAddendum}`);

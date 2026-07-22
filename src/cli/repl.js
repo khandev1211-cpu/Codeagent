@@ -5,6 +5,8 @@ import { buildSystemPrompt } from "../agent/systemPrompt.js";
 import { planTurn, shouldPlan } from "../agent/planner.js";
 import { createConfirmer } from "../safety/confirm.js";
 import { SkillRegistry } from "../skills/index.js";
+import { discoverProjectMemory, formatMemoryForPrompt } from "../agent/memory.js";
+import { handleSlashCommand } from "./slashCommands.js";
 import { renderToolCall, renderToolDeclined, renderToolPlanned, renderError, renderText } from "./render.js";
 import { LimitExceededError } from "../utils/errors.js";
 
@@ -55,18 +57,38 @@ export async function startRepl({
     }
     if (!userInput.trim()) continue;
 
-    let plannerOutput = null;
+    if (userInput.trim().startsWith("/")) {
+      const slashResult = handleSlashCommand(userInput, { cwd, config, renderText, renderError });
+      if (slashResult.handled) {
+        if (slashResult.action === "compact") {
+          renderText("\nCompacting context window...");
+          session.messages = await contextManager.compact(session.messages);
+          await sessionStore.save(session);
+          renderText("Context window compacted.\n");
+          continue;
+        }
+        if (slashResult.expandedPrompt) {
+          userInput = slashResult.expandedPrompt;
+          renderText(`\n→ Expanded command: ${userInput}\n`);
+        } else {
+          continue;
+        }
+      }
+    }
     if (shouldPlan({ config, userRequest: userInput })) {
       plannerOutput = await planTurn({ provider, userRequest: userInput });
       if (plannerOutput) renderText(`\nPlan:\n${plannerOutput}\n`);
     }
 
+    const memory = discoverProjectMemory(cwd);
+    const projectMemory = formatMemoryForPrompt(memory);
     const system = buildSystemPrompt({
       projectContext,
       plannerOutput,
       customAddendum: config.customSystemPromptAddendum,
       adminPrompt: config.adminSystemPrompt,
       skillsIndex: skillRegistry.formatIndexForPrompt(),
+      projectMemory,
     });
 
     try {
