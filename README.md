@@ -13,7 +13,7 @@
 
   <p>
     <img src="https://github.com/khandev1211-cpu/Codeagent/actions/workflows/ci.yml/badge.svg" alt="CI">
-    <img src="https://img.shields.io/badge/node-%3E%3D18-339933?logo=node.js&logoColor=white" alt="Node >=18">
+    <img src="https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white" alt="Node >=22">
     <img src="https://img.shields.io/badge/license-MIT-blue" alt="License MIT">
     <img src="https://img.shields.io/badge/ESM-module-ffd700" alt="ESM Module">
   </p>
@@ -59,6 +59,7 @@ Where codeagent is headed, and honestly, what's real today versus what's still d
 | **Hooks** (lifecycle events: pre/post tool use, session start/end) | ✅ Shipped (v1) | Shell-command hooks only; `PreToolUse` can block, `PostToolUse` can add context. Project-scoped (`.codeagent/hooks.json`) only — see `docs/17` and `codeagent hooks`. |
 | **Skills** (discoverable `SKILL.md` folders, progressive disclosure) | ✅ Shipped | Project-scoped (`.codeagent/skills/`) only for now. **102 skills ship with the repo**, spanning languages, testing, git workflow, code quality, APIs, databases, security, DevOps, frontend, docs, performance, debugging, concurrency, architecture, cloud, mobile, and more. Real, measured cost: the index alone is ~6,500 tokens on every turn at this scale — see `docs/19`. `allowed-tools` is parsed but still not enforced against skills specifically. See `codeagent skills`. |
 | Fine-grained permission rules & Plan Mode | ✅ Shipped (v1) | Evolves the existing confirm/`--yolo` safety layer rather than replacing it — deny always wins over allow; `--plan` makes destructive tools describe instead of execute, for the whole session. Both verified against real tools and real files, not just unit tests. No in-REPL toggle yet (waiting on Slash Commands). See `docs/20`, `codeagent permissions`. |
+| **Rich TUI** (Ink-based, live status header, mid-session model switcher) | ✅ Shipped (v1) | Automatic when both stdin/stdout are a real TTY; falls back to the plain REPL otherwise (piped input, CI) or if `CODEAGENT_PLAIN_REPL=1`. History carries over across a switch — the same guarantee as `codeagent use`, now reachable without leaving the session. See `docs/21`. |
 | **Subagents** | 🚧 Planned | Touches `orchestrator.js` directly, so per `docs/11` this needs a design pass, not a routine PR. Also reverses `docs/01`'s current "not a multi-agent framework" non-goal — that doc will be updated when this ships. |
 | **MCP client** (connect external tool servers) | 🚧 Planned | Separate from the LLM provider adapters above — this is a new *tool* source, not a new provider. |
 | **Plugins** (bundle Skills+Subagents+Hooks+MCP, install from GitHub/npm/local path) | 🚧 Planned | Deliberately last — in real Claude Code a plugin is a packaging format over the four items above, so building it first would ship an empty container. |
@@ -145,6 +146,10 @@ codeagent system-prompt [show|set <text>|clear]   Manage your global admin syste
 ```
 
 > **Setup wizard:** `codeagent setup` walks you through it once — provider, key, model — and remembers it in `~/.codeagentrc`. Run it again anytime to add another provider, switch your default, or reconfigure a key; on a completely fresh install, just running `codeagent` triggers it automatically before your first command.
+
+> **Interactive session:** a real terminal (stdin *and* stdout both TTYs) gets the rich Ink-based TUI automatically — live status header, Tab to open a model switcher mid-session. Piped input, CI, and other non-interactive contexts automatically get the plain scrolling REPL instead, which is also always available on demand via `CODEAGENT_PLAIN_REPL=1`. See `docs/21`.
+
+> **Interactive session:** in a real terminal, `codeagent` (no arguments) launches the rich Ink-based TUI — a live status header plus Tab to open a model switcher mid-session. Piped input, CI, or `CODEAGENT_PLAIN_REPL=1` all fall back to the plain-text REPL instead. See `docs/21`.
 
 ### Interactive REPL
 
@@ -360,6 +365,7 @@ Full architecture and design docs live in [`docs/`](./docs):
 | [18 — Provider Management & Admin Prompt](./docs/18-provider-management-and-admin-prompt.md) | Multi-provider config, persisted setup, shared history across providers, admin system prompt |
 | [19 — Skills](./docs/19-skills.md) | `SKILL.md` discovery, progressive disclosure, `.codeagent/skills/` |
 | [20 — Permission Rules & Plan Mode](./docs/20-permission-rules-and-plan-mode.md) | Fine-grained allow/deny rules, `--plan` read-only execution mode, precedence with Hooks and Safety |
+| [21 — Rich TUI](./docs/21-rich-tui.md) | Ink-based interactive session — status header, mid-session model switcher |
 
 ---
 

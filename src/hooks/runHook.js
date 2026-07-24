@@ -32,43 +32,35 @@ function pickShell() {
  *    hook reporting what it changed)
  */
 export function runHook(hookDef, payload, { cwd, logger, timeoutMs } = {}) {
-  // Adjust command syntax for Windows where ';' is not a command separator.
-  const adjustedCommand = (() => {
-    if (process.platform === "win32") {
-      // Replace semicolons with && and convert common Unix commands to Windows equivalents.
-      let cmd = command.replace(/;/g, " && ");
-      // Replace 'sleep <seconds>' with 'timeout /t <seconds> >nul'.
-      cmd = cmd.replace(/sleep\s+(\d+)/g, "timeout /t $1 >nul");
-      return cmd;
-    }
-    return command;
-  })();
+  const { command } = hookDef;
+  const effectiveTimeout = timeoutMs ?? hookDef.timeout ?? DEFAULT_HOOK_TIMEOUT_MS;
+  const shell = pickShell();
 
-  try {
-    proc = spawn(shell.cmd, [shell.flag, adjustedCommand], {
-      cwd: cwd || process.cwd(),
-      env: {
-        ...process.env,
-        CODEAGENT_EVENT: payload.event || "",
-        CODEAGENT_TOOL: payload.tool || "",
-      },
-    });
-  } catch (err) {
-    _saveKeyWindows(provider, key) {
-    // Use local fallback storage on Windows to avoid reliance on external credential tools.
-    return this._saveKeyLocal(provider, key);
-  }back to local storage.
-    return result || null; else if (code === 0) {
-      finish({ decision: "allow", reason: null, context });
-    } else {
-      logger?.warn(`Hook exited with code ${code}, treating as non-blocking`, {
-        command,
-        stderr: stderr.trim(),
-      });
+  return new Promise((resolve) => {
+    let settled = false;
+    let proc;
+
+    function finish(outcome) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ command, ...outcome });
     }
-    resolve({ command, decision: "error", reason: err.message, context: null });
-    return;
-  }
+
+    try {
+      proc = spawn(shell.cmd, [shell.flag, command], {
+        cwd: cwd || process.cwd(),
+        env: {
+          ...process.env,
+          CODEAGENT_EVENT: payload.event || "",
+          CODEAGENT_TOOL: payload.tool || "",
+        },
+      });
+    } catch (err) {
+      logger?.warn(`Hook failed to start: ${err.message}`, { command });
+      resolve({ command, decision: "error", reason: err.message, context: null });
+      return;
+    }
 
     let stdout = "";
     let stderr = "";

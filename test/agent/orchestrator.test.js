@@ -290,6 +290,66 @@ describe("Orchestrator.runTurn with hooks (Phase 3 / doc 16)", () => {
   });
 });
 
+describe("Orchestrator.setProvider (mid-session model switching)", () => {
+  it("swaps the active provider so the very next turn uses it", async () => {
+    const oldProvider = fakeProvider([{ content: [{ type: "text", text: "from old" }], usage: {}, stopReason: "end_turn" }]);
+    const newProvider = fakeProvider([{ content: [{ type: "text", text: "from new" }], usage: {}, stopReason: "end_turn" }]);
+    const orchestrator = new Orchestrator({
+      provider: oldProvider,
+      toolRegistry: new ToolRegistry([]),
+      confirm: alwaysAllow,
+      config: { maxIterationsPerTurn: 5, provider: "anthropic", model: "claude-sonnet-5" },
+    });
+
+    orchestrator.setProvider(newProvider, { providerName: "mistral", model: "codestral-latest" });
+
+    const result = await orchestrator.runTurn({ messages: [], userInput: "hi", system: "sys", cwd: "/tmp" });
+    expect(result.history.at(-1).content[0].text).toBe("from new");
+    expect(orchestrator.config.provider).toBe("mistral");
+    expect(orchestrator.config.model).toBe("codestral-latest");
+  });
+
+  it("carries the existing session history into the turn run under the new provider", async () => {
+    const newProvider = fakeProvider([{ content: [{ type: "text", text: "continuing" }], usage: {}, stopReason: "end_turn" }]);
+    const orchestrator = new Orchestrator({
+      provider: fakeProvider([]),
+      toolRegistry: new ToolRegistry([]),
+      confirm: alwaysAllow,
+      config: { maxIterationsPerTurn: 5 },
+    });
+    const priorHistory = [
+      { role: "user", content: "earlier message" },
+      { role: "assistant", content: [{ type: "text", text: "earlier reply" }] },
+    ];
+
+    orchestrator.setProvider(newProvider, { providerName: "mistral" });
+    const result = await orchestrator.runTurn({
+      messages: priorHistory,
+      userInput: "follow up",
+      system: "sys",
+      cwd: "/tmp",
+    });
+
+    // The prior turns are still there, unmodified, ahead of the new turn —
+    // this is the actual mechanism behind "history carries over" (docs/18).
+    expect(result.history[0]).toEqual(priorHistory[0]);
+    expect(result.history[1]).toEqual(priorHistory[1]);
+    expect(result.history.at(-1).content[0].text).toBe("continuing");
+  });
+
+  it("only updates config.model when a model is given, leaving provider untouched", async () => {
+    const orchestrator = new Orchestrator({
+      provider: fakeProvider([]),
+      toolRegistry: new ToolRegistry([]),
+      confirm: alwaysAllow,
+      config: { maxIterationsPerTurn: 5, provider: "anthropic", model: "claude-sonnet-5" },
+    });
+    orchestrator.setProvider(fakeProvider([]), { model: "claude-opus-4-8" });
+    expect(orchestrator.config.provider).toBe("anthropic");
+    expect(orchestrator.config.model).toBe("claude-opus-4-8");
+  });
+});
+
 describe("Orchestrator.runTurn with permission rules and plan mode (Phase 5 / docs/20)", () => {
   it("a deny rule blocks the call before confirm() or execute() ever run", async () => {
     let confirmCalled = false;

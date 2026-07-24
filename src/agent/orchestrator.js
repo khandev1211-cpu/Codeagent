@@ -32,6 +32,25 @@ export class Orchestrator {
     this.permissionRules = permissionRules;
   }
 
+  /**
+   * Swaps the active provider/model mid-session. Deliberately a method
+   * here rather than a caller reaching in and reassigning `.provider`
+   * directly — this is the one place that owns what "the active provider"
+   * means for a running orchestrator, so it's the one place a future
+   * change (e.g. emitting a SessionEnd/SessionStart-style event on
+   * switch, or validating the new provider first) has to happen.
+   *
+   * Session history is untouched — this is exactly the "same history,
+   * different model" capability verified in docs/18: every provider
+   * speaks the same internal message format, so the existing
+   * conversation continues unchanged under the new provider.
+   */
+  setProvider(provider, { providerName, model } = {}) {
+    this.provider = provider;
+    if (providerName) this.config = { ...this.config, provider: providerName };
+    if (model) this.config = { ...this.config, model };
+  }
+
   async runTurn({ messages, userInput, system, cwd, onEvent = () => {} }) {
     const history = [...messages, { role: "user", content: userInput }];
     let iterations = 0;

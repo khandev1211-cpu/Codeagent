@@ -112,28 +112,7 @@ export class KeychainManager {
         stdio: ["pipe", "pipe", "pipe"],
         windowsHide: true,
       }).trim();
-    const code = `
-      using System;
-      using System.Runtime.InteropServices;
-      public class Cred {
-        [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        public static extern bool CredRead(string target, uint type, uint reservedFlags, out IntPtr credentialPtr);
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-        public struct Credential { public uint flags, type; public string targetName, comment; public System.Runtime.InteropServices.ComTypes.FILETIME lastWritten; public uint credentialBlobSize; public IntPtr credentialBlob; public uint persist, attributeCount; public IntPtr attributes; public string targetAlias, userName; }
-        public static void Main(string[] args) {
-          if (CredRead("${target}", 1, 0, out IntPtr ptr)) {
-            var cred = (Credential)Marshal.PtrToStructure(ptr, typeof(Credential));
-            Console.Write(Marshal.PtrToStringUni(cred.credentialBlob, (int)cred.credentialBlobSize / 2));
-          }
-        }
-      }
-    `;
-    try {
-      return execFileSync("powershell", ["-NoProfile", "-Command", `Add-Type -TypeDefinition '${code}'; [Cred]::Main()`], {
-        encoding: "utf-8",
-        stdio: ["pipe", "pipe", "pipe"],
-        windowsHide: true,
-      }).trim() || null;
+      return result || null;
     } catch {
       return null;
     }

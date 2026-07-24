@@ -26,8 +26,6 @@ import { HookRegistry, HOOK_EVENTS, loadHooksConfig } from "../hooks/index.js";
 import { SkillRegistry } from "../skills/index.js";
 import { loadPermissionRules } from "../safety/permissionRules.js";
 
-import { discoverProjectMemory, formatMemoryForPrompt } from "../agent/memory.js";
-
 function buildCliConfigOverrides(opts) {
   const overrides = {};
   if (opts.model) overrides.model = opts.model;
@@ -61,14 +59,11 @@ async function oneShot(request, { config, logger, cwd }) {
 
   const projectContext = await buildProjectContext(cwd);
   const skillRegistry = new SkillRegistry({ cwd, logger });
-  const memory = discoverProjectMemory(cwd);
-  const projectMemory = formatMemoryForPrompt(memory);
   const system = buildSystemPrompt({
     projectContext,
     customAddendum: config.customSystemPromptAddendum,
     adminPrompt: config.adminSystemPrompt,
     skillsIndex: skillRegistry.formatIndexForPrompt(),
-    projectMemory,
   });
 
   await hookRegistry.run(HOOK_EVENTS.SESSION_START, { sessionId: session.id, cwd });
@@ -134,18 +129,27 @@ async function interactive({ config, logger, cwd, resumeId }) {
   const { rules: permissionRules } = loadPermissionRules({ cwd });
   await hookRegistry.run(HOOK_EVENTS.SESSION_START, { sessionId: session.id, cwd });
 
-  await startRepl({
-    provider,
-    toolRegistry,
-    config,
-    logger,
-    session,
-    sessionStore,
-    diffTracker,
-    cwd,
-    hookRegistry,
-    permissionRules,
-  });
+  const replParams = { provider, toolRegistry, config, logger, session, sessionStore, diffTracker, cwd, hookRegistry, permissionRules };
+
+  // The rich Ink TUI (docs/21) needs a real terminal on both ends — raw-mode
+  // keyboard capture needs stdin to be a TTY, screen redrawing needs stdout
+  // to be one. Piped input/output, CI, and non-interactive environments all
+  // fall back to the plain REPL (docs/10), which is what keeps codeagent's
+  // "scriptable, works in CI" goal intact — the fallback isn't a downgrade
+  // path, it's the correct behavior for those contexts. CODEAGENT_PLAIN_REPL=1
+  // forces the fallback even in a real terminal, as an escape hatch.
+  const useTui = process.stdin.isTTY && process.stdout.isTTY && process.env.CODEAGENT_PLAIN_REPL !== "1";
+
+  if (useTui) {
+    // Dynamic import, not a static one at the top of this file — ink/react
+    // are real dependencies with real startup cost, and every one-shot,
+    // scripted, or CI invocation of codeagent should never pay for loading
+    // them at all, only sessions that actually reach this branch.
+    const { startTui } = await import("./tui/index.js");
+    await startTui(replParams);
+  } else {
+    await startRepl(replParams);
+  }
 
   await hookRegistry.run(HOOK_EVENTS.SESSION_END, { sessionId: session.id, cwd });
 }
