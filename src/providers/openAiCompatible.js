@@ -1,5 +1,6 @@
 import { Provider } from "./base.js";
 import { ProviderError } from "../utils/errors.js";
+import { resolveApiKey } from "./resolveApiKey.js";
 
 const MAX_RETRIES = 3;
 
@@ -85,20 +86,24 @@ export class OpenAiCompatibleProvider extends Provider {
     this.providerLabel = providerLabel || config.provider;
   }
 
-  _apiKey() {
+  async _apiKey() {
     if (!this.requiresApiKey) return null;
-    const key = process.env[this.config.apiKeyEnvVar];
+    const key = await resolveApiKey({
+      provider: this.config.provider,
+      apiKeyEnvVar: this.config.apiKeyEnvVar,
+      logger: this.logger,
+    });
     if (!key) {
       throw new ProviderError(
-        `Missing API key: environment variable ${this.config.apiKeyEnvVar} is not set (required for ${this.providerLabel}).`
+        `Missing API key: set ${this.config.apiKeyEnvVar}, or run "codeagent setup" and save it to the keychain (required for ${this.providerLabel}).`
       );
     }
     return key;
   }
 
-  _headers() {
+  async _headers() {
     const headers = { "content-type": "application/json" };
-    const key = this._apiKey();
+    const key = await this._apiKey();
     if (key) headers.authorization = `Bearer ${key}`;
     return headers;
   }
@@ -107,7 +112,7 @@ export class OpenAiCompatibleProvider extends Provider {
     // Resolved once, outside the retry loop: a missing API key is a
     // configuration problem, not a transient network failure, so it must
     // not be caught and retried by the backoff logic below.
-    const headers = this._headers();
+    const headers = await this._headers();
 
     const body = {
       model: opts.model || this.config.model,

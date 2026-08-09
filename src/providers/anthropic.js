@@ -1,5 +1,6 @@
 import { Provider } from "./base.js";
 import { ProviderError } from "../utils/errors.js";
+import { resolveApiKey } from "./resolveApiKey.js";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
@@ -36,20 +37,29 @@ export class AnthropicProvider extends Provider {
     this.config = config;
     this.fetchImpl = fetchImpl;
     this.logger = logger;
+    // Every provider exposes this so callers (e.g. the CLI boot check) can
+    // ask generically "does this provider need a key" without special-
+    // casing provider names — matches the property OpenAiCompatibleProvider
+    // subclasses already expose (Ollama sets it false; everything else true).
+    this.requiresApiKey = true;
   }
 
-  _apiKey() {
-    const key = process.env[this.config.apiKeyEnvVar];
+  async _apiKey() {
+    const key = await resolveApiKey({
+      provider: "anthropic",
+      apiKeyEnvVar: this.config.apiKeyEnvVar,
+      logger: this.logger,
+    });
     if (!key) {
       throw new ProviderError(
-        `Missing API key: environment variable ${this.config.apiKeyEnvVar} is not set.`
+        `Missing API key: set ${this.config.apiKeyEnvVar}, or run "codeagent setup" and save it to the keychain.`
       );
     }
     return key;
   }
 
   async _request(body, { signal } = {}) {
-    const apiKey = this._apiKey();
+    const apiKey = await this._apiKey();
     let attempt = 0;
     let lastErr;
 
@@ -127,7 +137,7 @@ export class AnthropicProvider extends Provider {
     // an async generator of parsed SSE events (doc 06). Falls back to a
     // single non-streaming call if the fetch implementation doesn't support
     // response bodies as streams (kept simple and dependency-free for v1).
-    const apiKey = this._apiKey();
+    const apiKey = await this._apiKey();
     const body = {
       model: opts.model || this.config.model,
       max_tokens: opts.maxTokens || 4096,

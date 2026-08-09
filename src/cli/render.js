@@ -22,6 +22,13 @@ export function renderToolDeclined(toolName, reason, output = process.stdout) {
   output.write(colorize(`✗ ${toolName} declined (${reason})\n`, "yellow", output));
 }
 
+/** Plan Mode's "would do X" descriptions — visually distinct (dim, not
+ *  yellow/red) since nothing was actually blocked or declined, just not
+ *  executed because Plan Mode is active (docs/20). */
+export function renderToolPlanned(description, output = process.stdout) {
+  output.write(colorize(`◇ ${description}\n`, "dim", output));
+}
+
 export function renderError(message, output = process.stderr) {
   output.write(colorize(`Error: ${message}\n`, "red", output));
 }

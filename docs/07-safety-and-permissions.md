@@ -42,3 +42,7 @@ Beyond the confirm/decline flow, two structural guards apply regardless of confi
 ## Testing this layer
 
 Safety Layer tests specifically assert: (a) every tool with `destructive: true` cannot execute without either explicit confirmation or explicit `--yolo`, (b) decline paths produce a `tool_result` the model can act on rather than crashing the session, and (c) path/command boundary checks hold under both confirmed and `--yolo` execution (doc 12).
+
+## Relationship to Hooks (doc 17)
+
+As of Phase 3, a `PreToolUse` hook runs *before* this layer's `confirm()` and can block a call outright. This is a veto layer stacked in front of Safety, not a change to Safety itself — a hook can only add a way to say no; nothing about it lets a hook satisfy or skip the confirm/`--yolo` decision described above. See doc 17 for the full contract.

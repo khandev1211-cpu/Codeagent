@@ -23,9 +23,15 @@ Thumbs.db
 .vscode/
 .idea/
 
-# codeagent session storage
-~/.codeagent/
-.codeagent/
+# NOTE: project-level .codeagent/ (config.json, hooks.json, skills/) is
+# meant to be committed and shared with the team — this used to blanket-
+# ignore the whole directory, which silently broke Hooks' "git-shareable"
+# design (docs/17) and would have done the same to Skills (docs/18,
+# PLAN.md Phase 4) before anyone noticed. Real local/session state lives in
+# ~/.codeagent/sessions (the user's home directory), which was never
+# actually inside a project's repo to begin with — the `~/.codeagent/`
+# line below was a dead pattern anyway, since git doesn't expand `~`.
+# Nothing needs excluding here; removed rather than left wrong.
 
 # Local development planning (NOT for GitHub)
 PLAN.md

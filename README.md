@@ -1,4 +1,4 @@
-<![CDATA[<div align="center">
+<div align="center">
   <h1>🤖 Codeagent</h1>
   <p><strong>A terminal-native AI coding agent — describe a goal, watch it build.</strong></p>
 
@@ -12,7 +12,8 @@
   </p>
 
   <p>
-    <img src="https://img.shields.io/badge/node-%3E%3D18-339933?logo=node.js&logoColor=white" alt="Node >=18">
+    <img src="https://github.com/khandev1211-cpu/Codeagent/actions/workflows/ci.yml/badge.svg" alt="CI">
+    <img src="https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white" alt="Node >=22">
     <img src="https://img.shields.io/badge/license-MIT-blue" alt="License MIT">
     <img src="https://img.shields.io/badge/ESM-module-ffd700" alt="ESM Module">
   </p>
@@ -24,6 +25,8 @@
 
 Unlike chat-based coding assistants that only print code blocks for you to manually copy, codeagent **acts directly** on your codebase: reading, writing, editing files, searching across your project, and executing shell commands — all driven by an LLM that decides which tools to call and when.
 
+The project's direction is a self-hosted, provider-agnostic agent with the same shape as Claude Code: an agent loop, a growing tool set, Hooks, Skills, fine-grained permission rules, and Plan Mode all shipped — a **Plugin** system is what's still ahead. See [Roadmap](#roadmap) below for what's shipped versus what's planned.
+
 ---
 
 ## Features
@@ -31,12 +34,38 @@ Unlike chat-based coding assistants that only print code blocks for you to manua
 | Capability | Description |
 |---|---|
 | 🧠 **Agentic, not just chat** | Calls tools directly (read/write/edit files, search code, run shell commands) instead of printing diffs for you to paste. |
-| 🛡️ **Safe by default** | Every destructive action requires confirmation unless you explicitly pass `--yolo`. |
+| 🛡️ **Safe by default** | Every destructive action requires confirmation unless you explicitly pass `--yolo`, refined by fine-grained allow/deny rules and a `--plan` read-only mode — see `docs/20`. |
 | 🔄 **Resumable sessions** | Kill the process and pick up exactly where you left off — no context lost. |
 | ↩️ **Undo built in** | Revert the agent's most recent file changes without touching git. |
-| 🔌 **Provider-agnostic core** | Anthropic is the default, but the agent loop itself isn't hardcoded to one API. |
+| 🔌 **Six providers today** | Anthropic, OpenRouter, Mistral, Groq, Cerebras, and Ollama — switch with `--provider` and `--model`. |
+| 🧙 **Guided setup** | `codeagent setup` walks through provider, API key, and model selection. |
 | 📜 **Scriptable** | One-shot mode with proper exit codes — works in CI as well as interactively. |
 | 🧩 **Extensible by design** | Add new tools, providers, or config options without touching the core loop. |
+| ✅ **Skills** | 102 discoverable `SKILL.md` capabilities ship with the repo, read on demand — see Roadmap. Plugins still planned. |
+
+---
+
+## Roadmap
+
+Where codeagent is headed, and honestly, what's real today versus what's still design/in-progress. A full feature-by-feature audit against current Claude Code lives in [`docs/16`](./docs/16-claude-code-parity-audit.md); day-to-day phase planning lives in `PLAN.md` (not part of the published package).
+
+| Area | Status | Notes |
+|---|---|---|
+| Core agent loop, 6 tools, safety/undo/sessions | ✅ Shipped | `docs/02`–`docs/08`. |
+| Six provider adapters | ✅ Shipped | `docs/06`. Switch with `codeagent use <provider>`, or override per-run with `--provider`/`--model`. |
+| Setup wizard, persisted config, first-run auto-detection | ✅ Shipped | `codeagent setup` remembers your choices in `~/.codeagentrc` and auto-runs on a fresh install. `codeagent providers` / `codeagent use` manage multiple configured providers; history carries over across a switch — see `docs/18`. |
+| API key in OS keychain | ✅ Shipped | Read *and* write now — `codeagent setup` can save a key to the keychain and it's actually read back at boot (`docs/18`). Also fixed a real shell-injection risk in how keys were passed to `security`/`pass`/`cmdkey`. |
+| Admin system prompt | ✅ Shipped (v1) | `codeagent system-prompt set "<text>"` — global, priority-layered over project context, doesn't touch the Safety Layer or Hooks (`docs/18`). |
+| **Hooks** (lifecycle events: pre/post tool use, session start/end) | ✅ Shipped (v1) | Shell-command hooks only; `PreToolUse` can block, `PostToolUse` can add context. Project-scoped (`.codeagent/hooks.json`) only — see `docs/17` and `codeagent hooks`. |
+| **Skills** (discoverable `SKILL.md` folders, progressive disclosure) | ✅ Shipped | Project-scoped (`.codeagent/skills/`) only for now. **102 skills ship with the repo**, spanning languages, testing, git workflow, code quality, APIs, databases, security, DevOps, frontend, docs, performance, debugging, concurrency, architecture, cloud, mobile, and more. Real, measured cost: the index alone is ~6,500 tokens on every turn at this scale — see `docs/19`. `allowed-tools` is parsed but still not enforced against skills specifically. See `codeagent skills`. |
+| Fine-grained permission rules & Plan Mode | ✅ Shipped (v1) | Evolves the existing confirm/`--yolo` safety layer rather than replacing it — deny always wins over allow; `--plan` makes destructive tools describe instead of execute, for the whole session. Both verified against real tools and real files, not just unit tests. No in-REPL toggle yet (waiting on Slash Commands). See `docs/20`, `codeagent permissions`. |
+| **Rich TUI** (Ink-based, live status header, mid-session model switcher) | ✅ Shipped (v1) | Automatic when both stdin/stdout are a real TTY; falls back to the plain REPL otherwise (piped input, CI) or if `CODEAGENT_PLAIN_REPL=1`. History carries over across a switch — the same guarantee as `codeagent use`, now reachable without leaving the session. See `docs/21`. |
+| **Subagents** | 🚧 Planned | Touches `orchestrator.js` directly, so per `docs/11` this needs a design pass, not a routine PR. Also reverses `docs/01`'s current "not a multi-agent framework" non-goal — that doc will be updated when this ships. |
+| **MCP client** (connect external tool servers) | 🚧 Planned | Separate from the LLM provider adapters above — this is a new *tool* source, not a new provider. |
+| **Plugins** (bundle Skills+Subagents+Hooks+MCP, install from GitHub/npm/local path) | 🚧 Planned | Deliberately last — in real Claude Code a plugin is a packaging format over the four items above, so building it first would ship an empty container. |
+| Interactive config manager, usage/cost tracking | 🚧 Planned | Lower priority than the above; see `PLAN.md` Phase 9. |
+
+Enterprise/hosted infrastructure (Bedrock/Vertex/Foundry routing, gateways, admin console, Slack/VS Code/JetBrains first-party extensions, hosted cloud execution, agent teams, remote control, computer use) is an explicit non-goal for this project — see `docs/16` for the reasoning.
 
 ---
 
@@ -98,13 +127,29 @@ codeagent "do X"                 One-shot: run a single request, print result, e
 codeagent --resume <id>          Resume a specific saved session
 codeagent --resume last          Resume the most recent session for this project
 codeagent --yolo                 Skip destructive-action confirmations for this run
+codeagent --plan                 Plan mode: describe destructive actions instead of performing them
 codeagent --model <name>         Override the configured model for this run
 codeagent --provider <name>      Override the configured provider for this run
+codeagent setup                  Interactive first-time setup wizard (provider, key, model)
+codeagent models [provider]      List available models for a provider (--details for pricing/context)
+codeagent mistral-models         List Mistral models live from your API key
 codeagent undo                   Revert the most recent destructive change
 codeagent undo <ref>             Revert a specific recorded change
 codeagent sessions               List saved sessions for this project
 codeagent config                 Print the fully resolved config (API key redacted)
+codeagent hooks                  List hooks configured for this project (.codeagent/hooks.json)
+codeagent skills                  List skills discovered in .codeagent/skills/
+codeagent permissions             List permission rules configured for this project (.codeagent/permissions.json)
+codeagent providers               List every configured provider, which is active, and its key source
+codeagent use <provider> [model]  Switch the active provider/model (persists; history carries over)
+codeagent system-prompt [show|set <text>|clear]   Manage your global admin system prompt
 ```
+
+> **Setup wizard:** `codeagent setup` walks you through it once — provider, key, model — and remembers it in `~/.codeagentrc`. Run it again anytime to add another provider, switch your default, or reconfigure a key; on a completely fresh install, just running `codeagent` triggers it automatically before your first command.
+
+> **Interactive session:** a real terminal (stdin *and* stdout both TTYs) gets the rich Ink-based TUI automatically — live status header, Tab to open a model switcher mid-session. Piped input, CI, and other non-interactive contexts automatically get the plain scrolling REPL instead, which is also always available on demand via `CODEAGENT_PLAIN_REPL=1`. See `docs/21`.
+
+> **Interactive session:** in a real terminal, `codeagent` (no arguments) launches the rich Ink-based TUI — a live status header plus Tab to open a model switcher mid-session. Piped input, CI, or `CODEAGENT_PLAIN_REPL=1` all fall back to the plain-text REPL instead. See `docs/21`.
 
 ### Interactive REPL
 
@@ -304,7 +349,7 @@ Full architecture and design docs live in [`docs/`](./docs):
 | [02 — System Architecture](./docs/02-system-architecture.md) | Module map, data flow, layer responsibilities |
 | [03 — Package Structure](./docs/03-package-structure.md) | Folder layout, package.json, module boundaries |
 | [04 — Agent Core & Loop](./docs/04-agent-core-and-loop.md) | The orchestrator loop, limits, error handling |
-| [05 — Tools & Skills](./docs/05-tools-and-skills.md) | Every tool's schema, contract, and behavior |
+| [05 — Tools](./docs/05-tools.md) | Every tool's schema, contract, and behavior |
 | [06 — Provider Layer](./docs/06-provider-layer.md) | LLM abstraction, Anthropic adapter, retry logic |
 | [07 — Safety & Permissions](./docs/07-safety-and-permissions.md) | Destructive-op gating, confirmation flow, `--yolo` |
 | [08 — Context & Session Management](./docs/08-context-and-session-management.md) | Context window handling, persistence, undo |
@@ -315,6 +360,12 @@ Full architecture and design docs live in [`docs/`](./docs):
 | [13 — Deployment, Publishing & Versioning](./docs/13-deployment-publishing-and-versioning.md) | npm publish pipeline, semver, changelog |
 | [14 — Support, Maintenance & Roadmap](./docs/14-support-maintenance-and-roadmap.md) | Issue triage, support channels, roadmap |
 | [15 — Security & Privacy](./docs/15-security-and-privacy.md) | API key handling, sandboxing, telemetry stance |
+| [16 — Claude Code Parity Audit](./docs/16-claude-code-parity-audit.md) | Feature-by-feature audit vs. current Claude Code; what's in scope, what isn't, and why |
+| [17 — Hooks](./docs/17-hooks.md) | Lifecycle event system — PreToolUse/PostToolUse/SessionStart/SessionEnd |
+| [18 — Provider Management & Admin Prompt](./docs/18-provider-management-and-admin-prompt.md) | Multi-provider config, persisted setup, shared history across providers, admin system prompt |
+| [19 — Skills](./docs/19-skills.md) | `SKILL.md` discovery, progressive disclosure, `.codeagent/skills/` |
+| [20 — Permission Rules & Plan Mode](./docs/20-permission-rules-and-plan-mode.md) | Fine-grained allow/deny rules, `--plan` read-only execution mode, precedence with Hooks and Safety |
+| [21 — Rich TUI](./docs/21-rich-tui.md) | Ink-based interactive session — status header, mid-session model switcher |
 
 ---
 
@@ -377,4 +428,3 @@ Key security guarantees:
 <div align="center">
   <sub>Built with ❤️ for developers who want an AI coding partner that actually does the work.</sub>
 </div>
-]]>

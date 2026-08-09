@@ -1,6 +1,6 @@
 # codeagent — Documentation Index
 
-This is the full documentation set for **codeagent**, a terminal-native AI coding agent distributed as an npm package. Sixteen documents, each owning one concern so nothing is duplicated across files.
+This is the full documentation set for **codeagent**, a terminal-native AI coding agent distributed as an npm package. Twenty-one documents, each owning one concern so nothing is duplicated across files.
 
 | # | Document | Covers |
 |---|---|---|
@@ -8,7 +8,7 @@ This is the full documentation set for **codeagent**, a terminal-native AI codin
 | 02 | [System Architecture](./02-system-architecture.md) | Full module map, data flow, high-level diagram |
 | 03 | [Package Structure](./03-package-structure.md) | Folder layout, package.json shape, bin config |
 | 04 | [Agent Core & Loop](./04-agent-core-and-loop.md) | The orchestrator loop, iteration/cost limits |
-| 05 | [Tools & Skills](./05-tools-and-skills.md) | Every tool's schema, contract, and behavior |
+| 05 | [Tools](./05-tools.md) | Every tool's schema, contract, and behavior |
 | 06 | [Provider Layer](./06-provider-layer.md) | LLM abstraction + Anthropic adapter |
 | 07 | [Safety & Permissions](./07-safety-and-permissions.md) | Destructive-op policy, confirmations, `--yolo` |
 | 08 | [Context & Session Management](./08-context-and-session-management.md) | Context window handling, persistence, undo |
@@ -19,6 +19,12 @@ This is the full documentation set for **codeagent**, a terminal-native AI codin
 | 13 | [Deployment, Publishing & Versioning](./13-deployment-publishing-and-versioning.md) | npm publish pipeline, semver, changelog |
 | 14 | [Support, Maintenance & Roadmap](./14-support-maintenance-and-roadmap.md) | Issue triage, support channels, roadmap |
 | 15 | [Security & Privacy](./15-security-and-privacy.md) | API key handling, sandboxing, telemetry stance |
+| 16 | [Claude Code Parity Audit](./16-claude-code-parity-audit.md) | Feature-by-feature audit vs. current Claude Code; drives PLAN.md's phase order |
+| 17 | [Hooks](./17-hooks.md) | Lifecycle event system — PreToolUse/PostToolUse/SessionStart/SessionEnd, `.codeagent/hooks.json` |
+| 18 | [Provider Management & Admin Prompt](./18-provider-management-and-admin-prompt.md) | Multi-provider config, persisted setup, first-run detection, shared history across providers, admin system prompt |
+| 19 | [Skills](./19-skills.md) | `SKILL.md` discovery, progressive disclosure, `.codeagent/skills/` |
+| 20 | [Permission Rules & Plan Mode](./20-permission-rules-and-plan-mode.md) | Fine-grained allow/deny rules, `--plan` read-only execution mode, precedence order with Hooks and Safety |
+| 21 | [Rich TUI](./21-rich-tui.md) | Ink-based interactive session — status header, mid-session model switcher, `Orchestrator.setProvider()` |
 
 ## How to use this set
 

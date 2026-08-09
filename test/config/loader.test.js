@@ -2,7 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { loadConfig } from "../../src/config/loader.js";
+import {
+  loadConfig,
+  saveGlobalConfig,
+  configExists,
+  upsertProvider,
+  listConfiguredProviders,
+} from "../../src/config/loader.js";
 import { ConfigError } from "../../src/utils/errors.js";
 
 describe("loadConfig layering", () => {
@@ -64,5 +70,93 @@ describe("loadConfig layering", () => {
   ])("seeds correct default env var for provider %s", (provider, expectedEnvVar) => {
     const config = loadConfig({ provider }, { cwd: tmpCwd, homedir: tmpHome });
     expect(config.apiKeyEnvVar).toBe(expectedEnvVar);
+  });
+});
+
+describe("global config persistence (docs/18)", () => {
+  let tmpHome;
+
+  beforeEach(async () => {
+    tmpHome = await fs.mkdtemp(path.join(os.tmpdir(), "codeagent-home-"));
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpHome, { recursive: true, force: true });
+  });
+
+  it("configExists is false with no ~/.codeagentrc at all", () => {
+    expect(configExists({ homedir: tmpHome })).toBe(false);
+  });
+
+  it("configExists is false for an empty or provider-less config file", async () => {
+    await fs.writeFile(path.join(tmpHome, ".codeagentrc"), JSON.stringify({ logLevel: "debug" }));
+    expect(configExists({ homedir: tmpHome })).toBe(false);
+  });
+
+  it("saveGlobalConfig writes a new file, and configExists becomes true after upsertProvider", () => {
+    upsertProvider(
+      { provider: "anthropic", apiKeyEnvVar: "ANTHROPIC_API_KEY", model: "claude-sonnet-5" },
+      { homedir: tmpHome }
+    );
+    expect(configExists({ homedir: tmpHome })).toBe(true);
+  });
+
+  it("upsertProvider merges instead of overwriting previously configured providers", () => {
+    upsertProvider(
+      { provider: "anthropic", apiKeyEnvVar: "ANTHROPIC_API_KEY", model: "claude-sonnet-5" },
+      { homedir: tmpHome }
+    );
+    upsertProvider(
+      { provider: "mistral", apiKeyEnvVar: "MISTRAL_API_KEY", model: "codestral-latest" },
+      { homedir: tmpHome, makeActive: false }
+    );
+    const configured = listConfiguredProviders({ homedir: tmpHome });
+    expect(Object.keys(configured).sort()).toEqual(["anthropic", "mistral"]);
+    // the second upsert had makeActive: false, so anthropic should still be active
+    const resolved = loadConfig({}, { cwd: tmpHome, homedir: tmpHome });
+    expect(resolved.provider).toBe("anthropic");
+  });
+
+  it("upsertProvider with makeActive (default) switches the active provider/model", () => {
+    upsertProvider(
+      { provider: "anthropic", apiKeyEnvVar: "ANTHROPIC_API_KEY", model: "claude-sonnet-5" },
+      { homedir: tmpHome }
+    );
+    upsertProvider(
+      { provider: "mistral", apiKeyEnvVar: "MISTRAL_API_KEY", model: "codestral-latest" },
+      { homedir: tmpHome }
+    );
+    const resolved = loadConfig({}, { cwd: tmpHome, homedir: tmpHome });
+    expect(resolved.provider).toBe("mistral");
+    expect(resolved.model).toBe("codestral-latest");
+    // the first provider is still remembered even though it is no longer active
+    expect(Object.keys(listConfiguredProviders({ homedir: tmpHome })).sort()).toEqual([
+      "anthropic",
+      "mistral",
+    ]);
+  });
+
+  it("saveGlobalConfig deep-merges adminSystemPrompt without touching providers", () => {
+    upsertProvider(
+      { provider: "anthropic", apiKeyEnvVar: "ANTHROPIC_API_KEY", model: "claude-sonnet-5" },
+      { homedir: tmpHome }
+    );
+    saveGlobalConfig({ adminSystemPrompt: "Always write TypeScript." }, { homedir: tmpHome });
+    const resolved = loadConfig({}, { cwd: tmpHome, homedir: tmpHome });
+    expect(resolved.adminSystemPrompt).toBe("Always write TypeScript.");
+    expect(Object.keys(listConfiguredProviders({ homedir: tmpHome }))).toEqual(["anthropic"]);
+  });
+
+  it("loadConfig round-trips the providers map through ConfigSchema without stripping it", () => {
+    upsertProvider(
+      { provider: "anthropic", apiKeyEnvVar: "ANTHROPIC_API_KEY", model: "claude-sonnet-5", useKeychain: true },
+      { homedir: tmpHome }
+    );
+    const resolved = loadConfig({}, { cwd: tmpHome, homedir: tmpHome });
+    expect(resolved.providers.anthropic).toEqual({
+      apiKeyEnvVar: "ANTHROPIC_API_KEY",
+      model: "claude-sonnet-5",
+      useKeychain: true,
+    });
   });
 });

@@ -2,7 +2,13 @@ import readline from "node:readline/promises";
 import { isDestructive } from "./policy.js";
 import { shouldBypassConfirmation, logBypass } from "./yolo.js";
 
-function summarizeCall(toolName, input) {
+/**
+ * Human-readable one-line (or short multi-line) summary of a tool call —
+ * shared between the interactive confirm prompt here, Plan Mode's "would
+ * do X" descriptions, and permission-rule audit logging (docs/20), so
+ * there's exactly one place that knows how to describe each tool's input.
+ */
+export function summarizeCall(toolName, input) {
   if (toolName === "write_file") {
     return `write_file -> ${input.path} (${Buffer.byteLength(input.content || "", "utf-8")} bytes)`;
   }
