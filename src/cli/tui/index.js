@@ -2,7 +2,7 @@ import { render } from "ink";
 import { h } from "./h.js";
 import { App } from "./App.js";
 import { buildProjectContext } from "../../agent/context.js";
-import { SkillRegistry } from "../../skills/index.js";
+import { SkillRegistry, wireSkillsIndex } from "../../skills/index.js";
 import { listConfiguredProviders } from "../../config/loader.js";
 
 /**
@@ -26,6 +26,7 @@ export async function startTui({
 }) {
   const projectContext = await buildProjectContext(cwd);
   const skillRegistry = new SkillRegistry({ cwd, logger });
+  const { skillsIndexMode } = wireSkillsIndex({ skillRegistry, toolRegistry, config });
   const configuredProviders = listConfiguredProviders({});
 
   const instance = render(
@@ -41,6 +42,7 @@ export async function startTui({
       hookRegistry,
       permissionRules,
       skillRegistry,
+      skillsIndexMode,
       projectContext,
       configuredProviders,
     })

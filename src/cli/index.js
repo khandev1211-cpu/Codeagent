@@ -23,7 +23,7 @@ import { runSetupWizard } from "./setup.js";
 import { handleModelsCommand } from "./models.js";
 import { handleMistralModelsCommand } from "./mistralModels.js";
 import { HookRegistry, HOOK_EVENTS, loadHooksConfig } from "../hooks/index.js";
-import { SkillRegistry } from "../skills/index.js";
+import { SkillRegistry, wireSkillsIndex } from "../skills/index.js";
 import { loadPermissionRules } from "../safety/permissionRules.js";
 
 function buildCliConfigOverrides(opts) {
@@ -45,6 +45,9 @@ async function oneShot(request, { config, logger, cwd }) {
   const contextManager = new ContextManager({ provider });
   const hookRegistry = new HookRegistry({ cwd, logger });
   const { rules: permissionRules } = loadPermissionRules({ cwd });
+  const skillRegistry = new SkillRegistry({ cwd, logger });
+  const { skillsIndex, skillsIndexMode } = wireSkillsIndex({ skillRegistry, toolRegistry, config });
+
   const orchestrator = new Orchestrator({
     provider,
     toolRegistry,
@@ -55,15 +58,16 @@ async function oneShot(request, { config, logger, cwd }) {
     diffTracker,
     hookRegistry,
     permissionRules,
+    skillRegistry,
   });
 
   const projectContext = await buildProjectContext(cwd);
-  const skillRegistry = new SkillRegistry({ cwd, logger });
   const system = buildSystemPrompt({
     projectContext,
     customAddendum: config.customSystemPromptAddendum,
     adminPrompt: config.adminSystemPrompt,
-    skillsIndex: skillRegistry.formatIndexForPrompt(),
+    skillsIndex,
+    skillsIndexMode,
   });
 
   await hookRegistry.run(HOOK_EVENTS.SESSION_START, { sessionId: session.id, cwd });

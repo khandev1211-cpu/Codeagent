@@ -40,4 +40,41 @@ describe("SkillRegistry", () => {
     const registry = new SkillRegistry({ cwd: "/tmp/codeagent-nonexistent-skills-cwd" });
     expect(registry.list()).toEqual([]);
   });
+
+  it("formatCompactIndexForPrompt returns null when there are no skills", () => {
+    const registry = new SkillRegistry({ skills: [] });
+    expect(registry.formatCompactIndexForPrompt()).toBeNull();
+  });
+
+  it("formatCompactIndexForPrompt returns only names, no descriptions or paths", () => {
+    const registry = new SkillRegistry({ skills: SAMPLE_SKILLS });
+    const compact = registry.formatCompactIndexForPrompt();
+    expect(compact).toBe("commit-message, code-review");
+    expect(compact).not.toContain("Write a Conventional Commits message.");
+    expect(compact).not.toContain(".codeagent/skills");
+  });
+
+  it("formatCompactIndexForPrompt is substantially cheaper than the full index", () => {
+    const registry = new SkillRegistry({ skills: SAMPLE_SKILLS });
+    expect(registry.formatCompactIndexForPrompt().length).toBeLessThan(registry.formatIndexForPrompt().length);
+  });
+
+  it("describe() returns description and path for known names", () => {
+    const registry = new SkillRegistry({ skills: SAMPLE_SKILLS });
+    expect(registry.describe(["commit-message"])).toEqual([
+      { name: "commit-message", found: true, description: "Write a Conventional Commits message.", path: ".codeagent/skills/commit-message/SKILL.md" },
+    ]);
+  });
+
+  it("describe() reports found: false for unknown names without throwing", () => {
+    const registry = new SkillRegistry({ skills: SAMPLE_SKILLS });
+    expect(registry.describe(["nonexistent"])).toEqual([{ name: "nonexistent", found: false }]);
+  });
+
+  it("describe() handles a mix of known and unknown names in one call", () => {
+    const registry = new SkillRegistry({ skills: SAMPLE_SKILLS });
+    const result = registry.describe(["commit-message", "nonexistent"]);
+    expect(result[0].found).toBe(true);
+    expect(result[1]).toEqual({ name: "nonexistent", found: false });
+  });
 });

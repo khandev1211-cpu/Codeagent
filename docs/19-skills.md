@@ -33,7 +33,14 @@ Project-scoped only for v1 (`src/skills/discover.js`) — same reasoning as Hook
 
 **102 skills ship with this project**, spanning language-specific practices (Python, JS/TS, Go, Rust, Java, C#, Ruby, PHP, Swift, Kotlin), testing, git/PR workflow, code quality, API design, databases, security, DevOps/infra, frontend, documentation, performance, debugging, concurrency, data handling, architecture, cloud/deployment, mobile, tooling, and technical communication — added deliberately, in reviewed batches of 5, after the original "start smaller" plan (below) was superseded by an explicit decision to build a comprehensive library instead. Each batch was verified for clean discovery (no warnings, no duplicate names) before moving to the next.
 
-**The real, measured cost of that decision:** the system prompt index at 102 skills is ~26,000 characters, roughly **6,500 tokens** — paid on every single turn, regardless of whether any skill is relevant to what's being asked. This was flagged as a concrete tradeoff before scaling up, not discovered after the fact: progressive disclosure means skill *bodies* cost nothing until read, but the *index* itself is not free, and it scales linearly with skill count. At 102 skills, that line-item is comparable in size to a small system prompt on its own. Worth knowing if this becomes a real cost concern later — a two-tier index (names only, with descriptions fetched on demand) would cut this substantially, but wasn't built now, since it wasn't asked for.
+**The real, measured cost of that decision:** the system prompt index at 102 skills is ~26,000 characters, roughly **6,500 tokens** — paid on every single turn, regardless of whether any skill is relevant to what's being asked. This was flagged as a concrete tradeoff before scaling up, not discovered after the fact: progressive disclosure means skill *bodies* cost nothing until read, but the *index* itself is not free, and it scales linearly with skill count. At 102 skills, that line-item is comparable in size to a small system prompt on its own.
+
+**Fixed:** a two-tier index now exists (`SkillRegistry.formatCompactIndexForPrompt()`, `describe()`, `src/tools/skillInfo.js`, `src/skills/index.js`'s `wireSkillsIndex()`), controlled by `config.skillsIndexMode`:
+
+- **`"compact"` (default)** — the system prompt carries only skill *names*, comma-separated, no descriptions or paths. The model calls the `skill_info` tool with the names it suspects are relevant to get descriptions + paths, then `read_file`s the actual `SKILL.md` only if it's still relevant — an extra tier ahead of the existing body-on-demand behavior above. `skill_info` is only registered on the tool registry when there's at least one skill and the mode is compact — a project with no skills, or one running `"full"` mode, never sees it in its tool schema.
+- **`"full"`** — the original behavior: every name + description + path, inline, every turn. Available via `.codeagent/config.json`'s `skillsIndexMode: "full"` for anyone who'd rather pay the fixed cost than the extra tool round-trip (e.g. very small skill sets, where the round-trip likely costs more than it saves — see the crossover note in `test/agent/systemPrompt.test.js`).
+
+**Measured savings at the 102-skill scale this was flagged for:** compact mode's system-prompt contribution drops from ~24,300 characters (~6,100 tokens) to ~2,100 characters (~535 tokens) — roughly **5,500 tokens saved per turn**, paid only as an extra `skill_info` round-trip on the (likely minority of) turns where a skill actually turns out to be relevant.
 
 *(Original v1 plan, for context: "2-3 example skills... start smaller, validate the shape works, then expand" — see PLAN.md's revision history. That plan was correct as a default; it was deliberately overridden here.)*
 
@@ -41,11 +48,13 @@ A skill folder with no `SKILL.md`, or with malformed/incomplete frontmatter, is 
 
 **Fixed alongside this:** `.gitignore` used to blanket-ignore the entire `.codeagent/` directory, which would have silently made skills un-shareable the moment anyone tried to commit one — and had already been doing exactly that to `hooks.json` since Phase 3, unnoticed. Real local state (session history, undo data) lives in `~/.codeagent/sessions` — the user's home directory, never inside a project's repo in the first place — so there was nothing under a project's `.codeagent/` that actually needed excluding. See `.gitignore`'s comment for the full explanation.
 
-## Where this plugs in (`src/agent/systemPrompt.js`)
+## Where this plugs in (`src/agent/systemPrompt.js`, `src/skills/index.js`)
 
-`buildSystemPrompt` takes an optional `skillsIndex` string (built via `SkillRegistry.formatIndexForPrompt()`), rendered in a fixed position: after the admin system prompt (`docs/18`), before project context. `SkillRegistry` is constructed once per session (same caching pattern as project context) in both `cli/index.js`'s one-shot path and `repl.js`'s interactive loop.
+`buildSystemPrompt` takes an optional `skillsIndex` string plus `skillsIndexMode` ("compact" default, or "full"), rendered in a fixed position: after the admin system prompt (`docs/18`), before project context. `SkillRegistry` is constructed once per session (same caching pattern as project context) in all three entry points (`cli/index.js`'s one-shot path, `repl.js`'s interactive loop, and `cli/tui`'s Ink app).
 
-No new tool was needed to let the model actually read a skill. `.codeagent/skills/<name>/SKILL.md` is just an ordinary project-relative path, and `read_file` has no path restriction of its own to work around (path guarding, `src/tools/pathGuard.js`, only applies to writes) — this was an open question in PLAN.md's original task list ("check whether this needs a dedicated tool at all before building one"), and the answer is no.
+`wireSkillsIndex()` (`src/skills/index.js`) is the one place that resolves `config.skillsIndexMode` into (a) which index string to hand `buildSystemPrompt`, and (b) whether to register the `skill_info` tool at all — collapsed into one function so the same decision doesn't get re-implemented three times across the CLI entry points, mirroring the `BUILTIN_TOOLS` pattern in `tools/index.js`.
+
+No new tool was needed to let the model actually read a skill's *body*. `.codeagent/skills/<name>/SKILL.md` is just an ordinary project-relative path, and `read_file` has no path restriction of its own to work around (path guarding, `src/tools/pathGuard.js`, only applies to writes) — this was an open question in PLAN.md's original task list ("check whether this needs a dedicated tool at all before building one"), and the answer is no. A tool *was* needed for the description lookup step in compact mode (`skill_info`, `src/tools/skillInfo.js`) — that data doesn't exist as a file the model can `read_file`, so there was nowhere else for it to come from.
 
 `codeagent skills` lists what's discovered — read-only, matching the same "visibility command before any install machinery" pattern `codeagent hooks` established.
 
@@ -55,6 +64,7 @@ No new tool was needed to let the model actually read a skill. `.codeagent/skill
 - No personal (`~/.codeagent/skills`) or plugin-bundled skills — deliberately deferred to the Plugins phase (`docs/16`).
 - No `codeagent skills install <path>` — nothing to distribute from yet; that's what Plugins will actually be for.
 - No re-scanning mid-session — skills are discovered once per session, same as project context. Adding a skill while a session is running means starting a new session to see it.
+- `skill_info` only returns description + path, never the skill body — that would defeat the point of the two-tier index. The model still needs `read_file` for the actual instructions.
 
 ## Testing this layer
 

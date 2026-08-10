@@ -33,6 +33,7 @@ export function App({
   hookRegistry,
   permissionRules = [],
   skillRegistry,
+  skillsIndexMode = "full",
   projectContext,
   configuredProviders = {},
 }) {
@@ -57,6 +58,7 @@ export function App({
       diffTracker,
       hookRegistry,
       permissionRules,
+      skillRegistry,
     })
   );
 
@@ -141,7 +143,8 @@ export function App({
         plannerOutput,
         customAddendum: config.customSystemPromptAddendum,
         adminPrompt: config.adminSystemPrompt,
-        skillsIndex: skillRegistry.formatIndexForPrompt(),
+        skillsIndex: skillsIndexMode === "compact" ? skillRegistry.formatCompactIndexForPrompt() : skillRegistry.formatIndexForPrompt(),
+        skillsIndexMode,
       });
 
       const result = await orchestratorRef.current.runTurn({

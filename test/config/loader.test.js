@@ -28,6 +28,17 @@ describe("loadConfig layering", () => {
     const config = loadConfig({}, { cwd: tmpCwd, homedir: tmpHome });
     expect(config.provider).toBe("anthropic");
     expect(config.maxIterationsPerTurn).toBe(25);
+    // Compact is the actual fix for the flagged skills-index token cost
+    // (docs/19) — defaulting to "full" would mean nobody gets the saving
+    // without explicitly opting in.
+    expect(config.skillsIndexMode).toBe("compact");
+  });
+
+  it("skillsIndexMode can be overridden to 'full' via project config", async () => {
+    await fs.mkdir(path.join(tmpCwd, ".codeagent"));
+    await fs.writeFile(path.join(tmpCwd, ".codeagent", "config.json"), JSON.stringify({ skillsIndexMode: "full" }));
+    const config = loadConfig({}, { cwd: tmpCwd, homedir: tmpHome });
+    expect(config.skillsIndexMode).toBe("full");
   });
 
   it("project config overrides global config", async () => {

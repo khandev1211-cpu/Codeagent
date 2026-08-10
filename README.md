@@ -57,7 +57,7 @@ Where codeagent is headed, and honestly, what's real today versus what's still d
 | API key in OS keychain | ✅ Shipped | Read *and* write now — `codeagent setup` can save a key to the keychain and it's actually read back at boot (`docs/18`). Also fixed a real shell-injection risk in how keys were passed to `security`/`pass`/`cmdkey`. |
 | Admin system prompt | ✅ Shipped (v1) | `codeagent system-prompt set "<text>"` — global, priority-layered over project context, doesn't touch the Safety Layer or Hooks (`docs/18`). |
 | **Hooks** (lifecycle events: pre/post tool use, session start/end) | ✅ Shipped (v1) | Shell-command hooks only; `PreToolUse` can block, `PostToolUse` can add context. Project-scoped (`.codeagent/hooks.json`) only — see `docs/17` and `codeagent hooks`. |
-| **Skills** (discoverable `SKILL.md` folders, progressive disclosure) | ✅ Shipped | Project-scoped (`.codeagent/skills/`) only for now. **102 skills ship with the repo**, spanning languages, testing, git workflow, code quality, APIs, databases, security, DevOps, frontend, docs, performance, debugging, concurrency, architecture, cloud, mobile, and more. Real, measured cost: the index alone is ~6,500 tokens on every turn at this scale — see `docs/19`. `allowed-tools` is parsed but still not enforced against skills specifically. See `codeagent skills`. |
+| **Skills** (discoverable `SKILL.md` folders, progressive disclosure) | ✅ Shipped | Project-scoped (`.codeagent/skills/`) only for now. **102 skills ship with the repo**, spanning languages, testing, git workflow, code quality, APIs, databases, security, DevOps, frontend, docs, performance, debugging, concurrency, architecture, cloud, mobile, and more. Two-tier index (`config.skillsIndexMode`, default `"compact"`): system prompt carries names only (~535 tokens at this scale, down from ~6,100), descriptions fetched on demand via the `skill_info` tool — see `docs/19`. `allowed-tools` is parsed but still not enforced against skills specifically. See `codeagent skills`. |
 | Fine-grained permission rules & Plan Mode | ✅ Shipped (v1) | Evolves the existing confirm/`--yolo` safety layer rather than replacing it — deny always wins over allow; `--plan` makes destructive tools describe instead of execute, for the whole session. Both verified against real tools and real files, not just unit tests. No in-REPL toggle yet (waiting on Slash Commands). See `docs/20`, `codeagent permissions`. |
 | **Rich TUI** (Ink-based, live status header, mid-session model switcher) | ✅ Shipped (v1) | Automatic when both stdin/stdout are a real TTY; falls back to the plain REPL otherwise (piped input, CI) or if `CODEAGENT_PLAIN_REPL=1`. History carries over across a switch — the same guarantee as `codeagent use`, now reachable without leaving the session. See `docs/21`. |
 | **Subagents** | 🚧 Planned | Touches `orchestrator.js` directly, so per `docs/11` this needs a design pass, not a routine PR. Also reverses `docs/01`'s current "not a multi-agent framework" non-goal — that doc will be updated when this ships. |
@@ -147,9 +147,7 @@ codeagent system-prompt [show|set <text>|clear]   Manage your global admin syste
 
 > **Setup wizard:** `codeagent setup` walks you through it once — provider, key, model — and remembers it in `~/.codeagentrc`. Run it again anytime to add another provider, switch your default, or reconfigure a key; on a completely fresh install, just running `codeagent` triggers it automatically before your first command.
 
-> **Interactive session:** a real terminal (stdin *and* stdout both TTYs) gets the rich Ink-based TUI automatically — live status header, Tab to open a model switcher mid-session. Piped input, CI, and other non-interactive contexts automatically get the plain scrolling REPL instead, which is also always available on demand via `CODEAGENT_PLAIN_REPL=1`. See `docs/21`.
-
-> **Interactive session:** in a real terminal, `codeagent` (no arguments) launches the rich Ink-based TUI — a live status header plus Tab to open a model switcher mid-session. Piped input, CI, or `CODEAGENT_PLAIN_REPL=1` all fall back to the plain-text REPL instead. See `docs/21`.
+> **Interactive session:** in a real terminal, `codeagent` (no arguments) launches the rich Ink-based TUI automatically — a live status header plus Tab to open a model switcher mid-session. Piped input, CI, or `CODEAGENT_PLAIN_REPL=1` all fall back to the plain-text REPL instead. See `docs/21`.
 
 ### Interactive REPL
 
@@ -315,6 +313,7 @@ Destructive actions (writing files, editing files, running shell commands) alway
 | **`--yolo` flag** | Bypass confirmations for unattended/CI runs (explicit, per-invocation) |
 | **Audit logging** | Every bypassed confirmation is still logged with tool, input, and timestamp |
 | **Path traversal protection** | Tools refuse to write outside the project root unless explicitly configured |
+| **`run_bash` sandboxing** | Commands run inside `bubblewrap` (Linux) / `sandbox-exec` (macOS) when available — writes confined to the project root and `allowedWritePaths`, same allowlist as path traversal protection above; reads unrestricted. `config.sandboxMode: "auto"` (default) or `"off"`. See `docs/15`. |
 | **Undo capability** | All file changes are recorded and revertible, even under `--yolo` |
 
 If you want the agent to run unattended (e.g., in a script or CI), pass `--yolo` explicitly. Every bypassed confirmation is still logged, and file changes are still undoable even under `--yolo`.

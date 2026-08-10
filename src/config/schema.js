@@ -51,6 +51,25 @@ export const ConfigSchema = z.object({
   // "how I personally want codeagent to behave," not a per-project setting
   // (use customSystemPromptAddendum above for that).
   adminSystemPrompt: z.string().optional(),
+  // Controls how much of the skills index is paid for on every turn
+  // (docs/19's "known but deliberately deferred" tradeoff). "compact"
+  // sends only skill names (near-zero cost) and the model calls the
+  // skill_info tool on demand for descriptions of skills that look
+  // relevant to the current task. "full" keeps the original behavior —
+  // every name + description inline on every turn — for anyone who'd
+  // rather pay the fixed cost than the extra tool round-trip. Default is
+  // "compact" since that's the actual fix for the flagged cost.
+  skillsIndexMode: z.enum(["compact", "full"]).default("compact"),
+  // Confines run_bash's *writes* to allowedWritePaths via bubblewrap
+  // (Linux) or sandbox-exec (macOS), when available — reads remain
+  // unrestricted (src/safety/sandbox.js has the full reasoning). "auto"
+  // uses a sandbox when the platform supports it and logs a warning (not
+  // silent) when it can't; "off" skips detection entirely and runs
+  // unsandboxed, same as pre-sandboxing behavior. There is deliberately no
+  // "strict" mode that refuses to run without a sandbox — that would turn
+  // an availability gap (e.g. Windows, or Linux without bwrap installed)
+  // into a hard failure for an existing, already-shipped tool.
+  sandboxMode: z.enum(["auto", "off"]).default("auto"),
 });
 
 export function getDefaults() {

@@ -16,7 +16,10 @@ function renderAdminPrompt(adminPrompt) {
   return `## Standing instructions from the administrator (priority)\nSet once via "codeagent setup" or "codeagent system-prompt set", these apply across every project on this machine and take priority over the project context and any other instructions below — follow them unless they conflict with the tool-use conventions above.\n\n${adminPrompt}`;
 }
 
-function renderSkillsIndex(skillsIndex) {
+function renderSkillsIndex(skillsIndex, skillsIndexMode) {
+  if (skillsIndexMode === "compact") {
+    return `## Available skills (names only)\nThese are optional, discoverable instructions for specific kinds of tasks: ${skillsIndex}.\nIf a name looks relevant to what you're doing right now, call skill_info with that name to get its description and file path, then read the file (via read_file) only if it turns out to actually be relevant. Don't call skill_info for every name preemptively, and don't mention any of this to the user unless it's relevant.`;
+  }
   return `## Available skills\nThese are optional, discoverable instructions for specific kinds of tasks. Read a skill's file (via read_file) only if it's actually relevant to what you're doing right now — don't read all of them preemptively, and don't mention this list to the user unless it's relevant.\n\n${skillsIndex}`;
 }
 
@@ -38,10 +41,17 @@ function renderProjectContext({ tree, manifest, readme }) {
  * an index only, never full skill content), then everything project-
  * specific.
  */
-export function buildSystemPrompt({ projectContext, plannerOutput, customAddendum, adminPrompt, skillsIndex }) {
+export function buildSystemPrompt({
+  projectContext,
+  plannerOutput,
+  customAddendum,
+  adminPrompt,
+  skillsIndex,
+  skillsIndexMode = "full",
+}) {
   const parts = [BASE_TEMPLATE];
   if (adminPrompt) parts.push(renderAdminPrompt(adminPrompt));
-  if (skillsIndex) parts.push(renderSkillsIndex(skillsIndex));
+  if (skillsIndex) parts.push(renderSkillsIndex(skillsIndex, skillsIndexMode));
   if (projectContext) parts.push(renderProjectContext(projectContext));
   if (plannerOutput) parts.push(`## Current plan\n${plannerOutput}`);
   if (customAddendum) parts.push(`## Additional instructions\n${customAddendum}`);

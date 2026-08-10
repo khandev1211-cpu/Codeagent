@@ -58,6 +58,39 @@ describe("buildSystemPrompt", () => {
     expect(buildSystemPrompt(input)).toBe(buildSystemPrompt(input));
   });
 
+  it("skillsIndexMode 'full' (or omitted) renders descriptions inline, as before", () => {
+    const prompt = buildSystemPrompt({ skillsIndex: "- **commit-message**: Write a commit message." });
+    expect(prompt).toMatch(/Write a commit message\./);
+    expect(prompt).not.toMatch(/skill_info/);
+  });
+
+  it("skillsIndexMode 'compact' renders names only and tells the model to call skill_info for details", () => {
+    const prompt = buildSystemPrompt({ skillsIndex: "commit-message, code-review", skillsIndexMode: "compact" });
+    expect(prompt).toMatch(/commit-message, code-review/);
+    expect(prompt).toMatch(/skill_info/);
+    // The whole point: no inline descriptions in compact mode.
+    expect(prompt).not.toMatch(/Write a Conventional Commits/);
+  });
+
+  it("compact mode is meaningfully cheaper than full mode at realistic skill-set sizes", () => {
+    // A single skill's fixed compact-mode instructional overhead (telling
+    // the model to call skill_info) can outweigh one description's worth
+    // of savings — the real win only shows up at the scale this was built
+    // for (docs/19 measured this at ~6,500 tokens/turn for 102 skills).
+    // Twenty skills is enough to demonstrate the crossover without the
+    // test itself hardcoding 102.
+    const skillCount = 20;
+    const fullIndex = Array.from(
+      { length: skillCount },
+      (_, i) => `- **skill-${i}**: A reasonably detailed description of what skill ${i} does and when to use it. (read \`.codeagent/skills/skill-${i}/SKILL.md\` for full instructions)`
+    ).join("\n");
+    const compactIndex = Array.from({ length: skillCount }, (_, i) => `skill-${i}`).join(", ");
+
+    const fullPrompt = buildSystemPrompt({ skillsIndex: fullIndex, skillsIndexMode: "full" });
+    const compactPrompt = buildSystemPrompt({ skillsIndex: compactIndex, skillsIndexMode: "compact" });
+    expect(compactPrompt.length).toBeLessThan(fullPrompt.length);
+  });
+
   it("includes the skills index, positioned after the admin prompt and before project context", () => {
     const prompt = buildSystemPrompt({
       adminPrompt: "Prefer TypeScript.",

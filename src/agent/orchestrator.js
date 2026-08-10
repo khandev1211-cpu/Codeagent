@@ -20,6 +20,7 @@ export class Orchestrator {
     diffTracker,
     hookRegistry = NULL_HOOK_REGISTRY,
     permissionRules = [],
+    skillRegistry = null,
   }) {
     this.provider = provider;
     this.toolRegistry = toolRegistry;
@@ -30,6 +31,11 @@ export class Orchestrator {
     this.diffTracker = diffTracker;
     this.hookRegistry = hookRegistry;
     this.permissionRules = permissionRules;
+    // Only consumed by the skill_info tool (Tier 2 of the two-tier skills
+    // index, docs/19) — every other tool ignores it. Optional so existing
+    // callers/tests that construct an Orchestrator without skills keep
+    // working unchanged.
+    this.skillRegistry = skillRegistry;
   }
 
   /**
@@ -189,6 +195,7 @@ export class Orchestrator {
             config: this.config,
             diffTracker: this.diffTracker,
             logger: this.logger,
+            skillRegistry: this.skillRegistry,
           });
         } catch (err) {
           // Caught at the loop level, converted into a tool_result the model

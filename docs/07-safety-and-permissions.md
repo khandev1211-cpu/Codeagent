@@ -37,7 +37,7 @@ When a destructive tool call reaches the Safety Layer:
 Beyond the confirm/decline flow, two structural guards apply regardless of confirmation outcome:
 
 - **Path traversal protection:** `write_file`/`edit_file` refuse to write outside the resolved project root unless the user has explicitly configured a broader scope (doc 09). This applies even under `--yolo` — `--yolo` bypasses the confirmation prompt, not the boundary itself.
-- **Command execution scope:** `run_bash`'s working directory defaults to the project root and is never silently escalated to a broader filesystem scope by the tool itself; if the model requests a `cwd` outside the project, that's still just a parameter passed through the normal destructive-call confirmation, not a separate privileged path.
+- **Command execution scope:** `run_bash`'s working directory defaults to the project root and is never silently escalated to a broader filesystem scope by the tool itself; if the model requests a `cwd` outside the project, that's still just a parameter passed through the normal destructive-call confirmation, not a separate privileged path. Structurally, `run_bash` now also gets the same kind of boundary `write_file`/`edit_file` have — sandboxed writes confined to the project root and `allowedWritePaths`, same allowlist as the path traversal protection above — see doc 15 for the full mechanism (`bubblewrap`/`sandbox-exec`) and its limits.
 
 ## Testing this layer
 
