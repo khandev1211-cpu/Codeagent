@@ -1,6 +1,6 @@
 # codeagent — Documentation Index
 
-This is the full documentation set for **codeagent**, a terminal-native AI coding agent distributed as an npm package. Twenty-one documents, each owning one concern so nothing is duplicated across files.
+This is the full documentation set for **codeagent**, a terminal-native AI coding agent distributed as an npm package. Twenty-one documents, each owning one concern so nothing is duplicated across files. The set has grown alongside the project — Hooks, Skills, Permission Rules, Plan Mode, and the Rich TUI each earned their own doc as they shipped.
 
 | # | Document | Covers |
 |---|---|---|
@@ -25,6 +25,17 @@ This is the full documentation set for **codeagent**, a terminal-native AI codin
 | 19 | [Skills](./19-skills.md) | `SKILL.md` discovery, progressive disclosure, `.codeagent/skills/` |
 | 20 | [Permission Rules & Plan Mode](./20-permission-rules-and-plan-mode.md) | Fine-grained allow/deny rules, `--plan` read-only execution mode, precedence order with Hooks and Safety |
 | 21 | [Rich TUI](./21-rich-tui.md) | Ink-based interactive session — status header, mid-session model switcher, `Orchestrator.setProvider()` |
+
+## Additional project documentation
+
+Beyond the `docs/` set, these root-level documents supplement the architecture docs:
+
+| Document | Covers |
+|---|---|
+| [`PLAN.md`](../PLAN.md) | Phase-by-phase implementation plan and roadmap |
+| [`implementation_plan.md`](../implementation_plan.md) | Claude Code parity roadmap — Project Memory, Slash Commands, Subagents, MCP client, Plugins, Web Tools & sandboxing |
+| [`external_plugin_plan.md`](../external_plugin_plan.md) | External plugin installation plan — `codeagent plugin install`, manifest schema, security model |
+| [`GEMMA4-HACKATHON-SETUP.md`](../GEMMA4-HACKATHON-SETUP.md) | Hackathon guide for running Gemma 4 locally via Ollama with codeagent |
 
 ## How to use this set
 
