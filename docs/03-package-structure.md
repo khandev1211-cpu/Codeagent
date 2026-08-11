@@ -23,7 +23,9 @@ codeagent/
 │   │   ├── context.js          # context window management, truncation
 │   │   ├── planner.js          # optional multi-step task decomposition
 │   │   ├── memory.js           # CODEAGENT.md / CLAUDE.md + .codeagent/rules/*.md discovery
-│   │   ├── subagent.js         # isolated child agents with restricted tool sets
+│   │   ├── subagent.js         # SubagentRunner — isolated child agents
+│   │   ├── discoverSubagents.js # .codeagent/agents/*.md discovery + frontmatter parsing
+│   │   ├── subagentRegistry.js # SubagentRegistry + wireSubagentsIndex
 │   │   └── systemPrompt.js     # system prompt templates, project context injection
 │   ├── providers/
 │   │   ├── base.js             # Provider interface
@@ -64,6 +66,7 @@ codeagent/
 │   │   ├── matcher.js          # tool/event matcher
 │   │   ├── runHook.js          # shell command invocation
 │   │   ├── loadHooksConfig.js  # .codeagent/hooks.json parsing
+│   │   ├── audit.js            # logHookBlock — persistent hook-block audit trail
 │   │   └── index.js
 │   ├── safety/
 │   │   ├── confirm.js          # interactive y/n prompts
@@ -94,7 +97,7 @@ codeagent/
 ├── README.md
 ├── CHANGELOG.md
 ├── docs/
-│   └── ...                     # 00–21 architecture/design docs
+│   └── ...                     # 00–22 architecture/design docs
 ├── PLAN.md                     # phase-by-phase implementation plan
 └── .codeagent/
     ├── agents/                 # subagent definitions (reviewer, fixer)

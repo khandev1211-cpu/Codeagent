@@ -17,6 +17,7 @@
                 │    Agent Core     │   (doc 04)
                 │  orchestrator.js  │
                 │  + Subagents      │
+                │  + SubagentRegistry│
                 │  + Project Memory │
                 └───┬────────┬──────┘
                     │        │
@@ -56,7 +57,7 @@ Each layer has exactly one job and talks to its neighbors through a narrow inter
 | Layer | Owns | Does NOT own |
 |---|---|---|
 | CLI/REPL | Argument parsing, terminal I/O, output rendering, slash-command dispatch | Any decision about what tool to call |
-| Agent Core | The loop: send → tool_use → execute → tool_result → repeat; subagent delegation; project memory injection | Tool implementation details, provider wire format |
+| Agent Core | The loop: send → tool_use → execute → tool_result → repeat; subagent delegation (via `SubagentRegistry` + `_runSubagentTurn`); project memory injection | Tool implementation details, provider wire format |
 | Provider Layer | Translating the loop's abstract "send messages, get response" into a specific API's request/response shape | Deciding when to call a tool — that's the model's job, mediated by the loop |
 | Tool Registry | Holding the list of available tools and their schemas (built-in + MCP-discovered) | Executing tool logic itself — that's each tool module's job |
 | Individual Tools | Doing one file/shell operation each, returning a structured result | Safety decisions — a tool doesn't know if it's allowed to run, only how to run |

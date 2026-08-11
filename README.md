@@ -60,7 +60,7 @@ Where codeagent is headed, and honestly, what's real today versus what's still d
 | **Skills** (discoverable `SKILL.md` folders, progressive disclosure) | ✅ Shipped | Project-scoped (`.codeagent/skills/`) only for now. **102 skills ship with the repo**, spanning languages, testing, git workflow, code quality, APIs, databases, security, DevOps, frontend, docs, performance, debugging, concurrency, architecture, cloud, mobile, and more. Two-tier index (`config.skillsIndexMode`, default `"compact"`): system prompt carries names only (~535 tokens at this scale, down from ~6,100), descriptions fetched on demand via the `skill_info` tool — see `docs/19`. `allowed-tools` is parsed but still not enforced against skills specifically. See `codeagent skills`. |
 | Fine-grained permission rules & Plan Mode | ✅ Shipped (v1) | Evolves the existing confirm/`--yolo` safety layer rather than replacing it — deny always wins over allow; `--plan` makes destructive tools describe instead of execute, for the whole session. Both verified against real tools and real files, not just unit tests. No in-REPL toggle yet (waiting on Slash Commands). See `docs/20`, `codeagent permissions`. |
 | **Rich TUI** (Ink-based, live status header, mid-session model switcher) | ✅ Shipped (v1) | Automatic when both stdin/stdout are a real TTY; falls back to the plain REPL otherwise (piped input, CI) or if `CODEAGENT_PLAIN_REPL=1`. History carries over across a switch — the same guarantee as `codeagent use`, now reachable without leaving the session. See `docs/21`. |
-| **Subagents** | ✅ Shipped (v1) | Isolated child agents with restricted tool sets — `run_subagent` tool, `.codeagent/agents/<name>.md` definitions, built-in `general-researcher`. See `implementation_plan.md`. |
+| **Subagents** | ✅ Shipped (v1) | Isolated child agents with restricted tool sets — `run_subagent` tool, `.codeagent/agents/<name>.md` definitions, `SubagentRegistry` + `wireSubagentsIndex`, built-in `general-researcher`. See `docs/22`. |
 | **MCP client** (connect external tool servers) | ✅ Shipped (v1) | `.codeagent/mcp.json` config, stdio transport, dynamic tool registration. See `implementation_plan.md`. |
 | **Web tools** (`web_search`, `web_fetch`) | ✅ Shipped | Read-only web access — search documentation, fetch URLs, convert HTML to plain text. No API key required. |
 | **In-REPL Slash Commands** | ✅ Shipped | `/help`, `/plan`, `/compact`, `/clear`, `/review`, `/test` — plus custom commands in `.codeagent/commands/`. |
@@ -167,7 +167,7 @@ Custom slash commands can be defined in `.codeagent/commands/<name>.md` — the 
 
 > **Interactive session:** in a real terminal, `codeagent` (no arguments) launches the rich Ink-based TUI automatically — a live status header plus Tab to open a model switcher mid-session. Piped input, CI, or `CODEAGENT_PLAIN_REPL=1` all fall back to the plain-text REPL instead. See `docs/21`.
 
-> **Subagents:** delegate well-scoped sub-tasks to isolated child agents via the `run_subagent` tool. Built-in `general-researcher` is always available; define custom agents in `.codeagent/agents/<name>.md` with YAML frontmatter (`name`, `description`, `allowed-tools`). See `docs/11` and `implementation_plan.md`.
+> **Subagents:** delegate well-scoped sub-tasks to isolated child agents via the `run_subagent` tool. Built-in `general-researcher` is always available; define custom agents in `.codeagent/agents/<name>.md` with YAML frontmatter (`name`, `description`, `tools`). Subagents share the parent's safety layer — same confirm, hooks, permission rules, and Plan Mode. See `docs/22`.
 
 > **MCP client:** connect external Model Context Protocol servers by adding a `.codeagent/mcp.json` file. Tools from connected servers are dynamically registered and available to the agent. See `implementation_plan.md`.
 
@@ -393,6 +393,7 @@ Full architecture and design docs live in [`docs/`](./docs):
 | [19 — Skills](./docs/19-skills.md) | `SKILL.md` discovery, progressive disclosure, `.codeagent/skills/` |
 | [20 — Permission Rules & Plan Mode](./docs/20-permission-rules-and-plan-mode.md) | Fine-grained allow/deny rules, `--plan` read-only execution mode, precedence with Hooks and Safety |
 | [21 — Rich TUI](./docs/21-rich-tui.md) | Ink-based interactive session — status header, mid-session model switcher |
+| [22 — Subagents](./docs/22-subagents.md) | Design writeup for Phase 6 — isolated child agents, tool-subset restriction, synchronous execution |
 
 ---
 
