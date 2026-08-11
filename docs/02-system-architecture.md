@@ -10,15 +10,11 @@
                          │
                 ┌────────▼─────────┐
                 │   REPL / UI Layer │   (doc 10)
-                │  + Slash Commands │
                 └────────┬─────────┘
                          │
                 ┌────────▼─────────┐
                 │    Agent Core     │   (doc 04)
                 │  orchestrator.js  │
-                │  + Subagents      │
-                │  + SubagentRegistry│
-                │  + Project Memory │
                 └───┬────────┬──────┘
                     │        │
         ┌───────────▼──┐  ┌──▼────────────┐
@@ -29,7 +25,6 @@
                     ┌──────────▼───────────┐
                     │   Individual Tools    │
                     │      (doc 05)         │
-                    │  + MCP tools (doc 05) │
                     └──────────┬────────────┘
                                │
                     ┌──────────▼───────────┐
@@ -42,12 +37,6 @@
         │   Config, Logger, Context Manager   │
         │        (doc 08, doc 09)             │
         └────────────────────────────────────┘
-
-        ┌────────────────────────────────────┐
-        │   Extension sources:                │
-        │   Hooks (doc 17), Skills (doc 19),  │
-        │   MCP servers, Plugins, Subagents   │
-        └────────────────────────────────────┘
 ```
 
 ## Layer responsibilities (separation of concerns)
@@ -56,16 +45,14 @@ Each layer has exactly one job and talks to its neighbors through a narrow inter
 
 | Layer | Owns | Does NOT own |
 |---|---|---|
-| CLI/REPL | Argument parsing, terminal I/O, output rendering, slash-command dispatch | Any decision about what tool to call |
-| Agent Core | The loop: send → tool_use → execute → tool_result → repeat; subagent delegation (via `SubagentRegistry` + `_runSubagentTurn`); project memory injection | Tool implementation details, provider wire format |
+| CLI/REPL | Argument parsing, terminal I/O, output rendering | Any decision about what tool to call |
+| Agent Core | The loop: send → tool_use → execute → tool_result → repeat | Tool implementation details, provider wire format |
 | Provider Layer | Translating the loop's abstract "send messages, get response" into a specific API's request/response shape | Deciding when to call a tool — that's the model's job, mediated by the loop |
-| Tool Registry | Holding the list of available tools and their schemas (built-in + MCP-discovered) | Executing tool logic itself — that's each tool module's job |
+| Tool Registry | Holding the list of available tools and their schemas | Executing tool logic itself — that's each tool module's job |
 | Individual Tools | Doing one file/shell operation each, returning a structured result | Safety decisions — a tool doesn't know if it's allowed to run, only how to run |
 | Safety Layer | Classifying and gating destructive actions | Tool logic, provider logic |
 | Session Store | Persisting conversation + file-change history to disk | Context window decisions (that's Context Manager, doc 08) |
 | Config | Resolving layered settings into one final config object | Nothing else consumes raw config files directly — everything reads through this |
-| MCP Client | Connecting to external MCP servers, translating their tools into codeagent tool objects | Deciding when to call an MCP tool — that's the model's job |
-| Plugin Registry | Discovering and validating installed plugins (`codeagent-plugin.json` / `plugin.json`) | Executing plugin logic — that's the plugin's own entrypoint's job |
 
 ## Data flow for a single turn
 

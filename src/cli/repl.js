@@ -5,6 +5,8 @@ import { buildSystemPrompt } from "../agent/systemPrompt.js";
 import { planTurn, shouldPlan } from "../agent/planner.js";
 import { createConfirmer } from "../safety/confirm.js";
 import { SkillRegistry, wireSkillsIndex } from "../skills/index.js";
+import { SubagentRegistry, wireSubagentsIndex } from "../agent/subagentRegistry.js";
+import { loadMemory, formatMemoryForPrompt } from "../agent/memory.js";
 import { renderToolCall, renderToolDeclined, renderToolPlanned, renderError, renderText } from "./render.js";
 import { LimitExceededError } from "../utils/errors.js";
 
@@ -25,6 +27,8 @@ export async function startRepl({
   const contextManager = new ContextManager({ provider });
   const skillRegistry = new SkillRegistry({ cwd, logger });
   const { skillsIndex, skillsIndexMode } = wireSkillsIndex({ skillRegistry, toolRegistry, config });
+  const subagentRegistry = new SubagentRegistry({ cwd, logger });
+  const { subagentsIndex } = wireSubagentsIndex({ subagentRegistry, toolRegistry });
   const orchestrator = new Orchestrator({
     provider,
     toolRegistry,
@@ -36,9 +40,11 @@ export async function startRepl({
     hookRegistry,
     permissionRules,
     skillRegistry,
+    subagentRegistry,
   });
 
   const projectContext = await buildProjectContext(cwd);
+  const memory = formatMemoryForPrompt(await loadMemory({ cwd }));
 
   renderText(`codeagent session ${session.id} — ${session.provider}/${session.model}`);
   renderText("Type your request, or Ctrl+C to exit.\n");
@@ -68,8 +74,10 @@ export async function startRepl({
       plannerOutput,
       customAddendum: config.customSystemPromptAddendum,
       adminPrompt: config.adminSystemPrompt,
+      memory,
       skillsIndex,
       skillsIndexMode,
+      subagentsIndex,
     });
 
     try {

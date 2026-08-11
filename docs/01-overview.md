@@ -21,7 +21,7 @@
 ## Non-goals
 
 - **Not an IDE.** No GUI, no editor plugin (at least not in this package — that could be a separate downstream package built on the same core).
-- **Not a multi-agent framework.** One agent, one conversation at a time. Multi-agent orchestration (if ever wanted) is future scope, not v1.
+- **Not a general multi-agent framework.** Subagents (docs/22) added scoped, single-level task delegation — explicit invocation only, one level deep (a subagent cannot itself spawn a subagent), synchronous, no automatic delegation the model decides on its own. That's a bounded capability inside one conversation, not the thing this line was originally ruling out: standing multi-agent orchestration, agent-to-agent messaging, or background/async multi-agent workflows remain out of scope.
 - **Not trying to replace version control.** codeagent tracks its own edits for undo purposes (doc 08) but is not a substitute for `git`; users should still commit their work normally.
 - **Not a hosted service.** This is a local CLI tool talking directly to the Anthropic API with the user's own key — no codeagent-run backend in the loop.
 

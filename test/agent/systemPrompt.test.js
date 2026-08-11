@@ -14,6 +14,26 @@ describe("buildSystemPrompt", () => {
     expect(prompt).not.toMatch(/Project context/);
     expect(prompt).not.toMatch(/Current plan/);
     expect(prompt).not.toMatch(/Additional instructions/);
+    expect(prompt).not.toMatch(/AGENTS\.md/);
+  });
+
+  it("includes memory content when provided, under an AGENTS.md-labeled section", () => {
+    const prompt = buildSystemPrompt({ memory: "Use tabs, not spaces." });
+    expect(prompt).toMatch(/AGENTS\.md/);
+    expect(prompt).toContain("Use tabs, not spaces.");
+  });
+
+  it("places memory after the admin prompt but before the skills index", () => {
+    const prompt = buildSystemPrompt({
+      adminPrompt: "ADMIN_MARKER",
+      memory: "MEMORY_MARKER",
+      skillsIndex: "SKILLS_MARKER",
+    });
+    const adminIdx = prompt.indexOf("ADMIN_MARKER");
+    const memoryIdx = prompt.indexOf("MEMORY_MARKER");
+    const skillsIdx = prompt.indexOf("SKILLS_MARKER");
+    expect(adminIdx).toBeLessThan(memoryIdx);
+    expect(memoryIdx).toBeLessThan(skillsIdx);
   });
 
   it("places the admin prompt before project context and project-level addendum", () => {

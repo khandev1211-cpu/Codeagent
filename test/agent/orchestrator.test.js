@@ -161,6 +161,8 @@ describe("Orchestrator.runTurn with hooks (Phase 3 / doc 16)", () => {
   it("skips confirm() and execute() entirely when a PreToolUse hook blocks", async () => {
     let confirmCalled = false;
     let executeCalled = false;
+    const loggedInfo = [];
+    const logger = { info: (...a) => loggedInfo.push(a), warn: () => {}, error: () => {} };
     const trackedTool = {
       ...echoTool,
       async execute(input) {
@@ -191,6 +193,7 @@ describe("Orchestrator.runTurn with hooks (Phase 3 / doc 16)", () => {
       },
       config: { maxIterationsPerTurn: 5 },
       hookRegistry,
+      logger,
     });
     const events = [];
     const result = await orchestrator.runTurn({
@@ -204,6 +207,10 @@ describe("Orchestrator.runTurn with hooks (Phase 3 / doc 16)", () => {
     expect(confirmCalled).toBe(false);
     expect(executeCalled).toBe(false);
     expect(events.some((e) => e.type === "tool_blocked" && e.reason === "policy says no")).toBe(true);
+    // Audit trail: a PreToolUse block must reach the persistent logger, not
+    // just the live onEvent callback (docs/07's "every bypass is logged"
+    // principle, extended from --yolo to hook blocks — src/hooks/audit.js).
+    expect(loggedInfo.some(([msg, details]) => msg.includes("PreToolUse") && details.toolName === "echo_tool" && details.reason === "policy says no")).toBe(true);
     const toolResultMsg = result.history.find(
       (m) => Array.isArray(m.content) && m.content[0]?.type === "tool_result"
     );
@@ -272,7 +279,10 @@ describe("Orchestrator.runTurn with hooks (Phase 3 / doc 16)", () => {
       (m) => Array.isArray(m.content) && m.content[0]?.type === "tool_result"
     );
     expect(toolResultMsg.content[0].is_error).toBe(false);
-    expect(warnings.some((w) => w.msg.includes("PostToolUse hook signaled block"))).toBe(true);
+    // Message text and shape now come from logHookBlock (src/hooks/audit.js)
+    // — same audit format as the PreToolUse block case, at warn level.
+    expect(warnings.some((w) => w.msg.includes("Hook blocked PostToolUse") && w.msg.includes("echo_tool"))).toBe(true);
+    expect(warnings.some((w) => w.meta?.reason === "too late")).toBe(true);
   });
 
   it("defaults to the null hook registry and behaves exactly as before when none is provided", async () => {

@@ -16,11 +16,32 @@ function renderAdminPrompt(adminPrompt) {
   return `## Standing instructions from the administrator (priority)\nSet once via "codeagent setup" or "codeagent system-prompt set", these apply across every project on this machine and take priority over the project context and any other instructions below — follow them unless they conflict with the tool-use conventions above.\n\n${adminPrompt}`;
 }
 
+function renderMemory(memoryText) {
+  // The CLAUDE.md-equivalent gap (docs/16, docs/23): user-authored,
+  // discoverable instructions, distinct from the admin prompt (operator-
+  // set, machine-wide) above it and the auto-generated project context
+  // (README/tree, mechanical, no editorial voice) below it. Sits between
+  // the two: more specific than "standing administrator instructions",
+  // more intentional/curated than "here's what package.json says".
+  return `## Project & personal instructions (AGENTS.md)\nThe following was authored by the user or team specifically to guide how you work in this project — treat it with real weight, but it doesn't override the tool-use conventions above or the Safety Layer (enforced in code, independent of any system prompt content).\n\n${memoryText}`;
+}
+
 function renderSkillsIndex(skillsIndex, skillsIndexMode) {
   if (skillsIndexMode === "compact") {
     return `## Available skills (names only)\nThese are optional, discoverable instructions for specific kinds of tasks: ${skillsIndex}.\nIf a name looks relevant to what you're doing right now, call skill_info with that name to get its description and file path, then read the file (via read_file) only if it turns out to actually be relevant. Don't call skill_info for every name preemptively, and don't mention any of this to the user unless it's relevant.`;
   }
   return `## Available skills\nThese are optional, discoverable instructions for specific kinds of tasks. Read a skill's file (via read_file) only if it's actually relevant to what you're doing right now — don't read all of them preemptively, and don't mention this list to the user unless it's relevant.\n\n${skillsIndex}`;
+}
+
+/**
+ * Full inline index, not two-tier — docs/22's "System prompt footprint"
+ * explains why this doesn't need Skills' compact treatment. Call
+ * run_subagent explicitly rather than the model narrating what it's
+ * about to delegate, matching how the skills section already tells the
+ * model not to narrate its own tool-selection process to the user.
+ */
+function renderSubagentsIndex(subagentsIndex) {
+  return `## Available subagents\nThese are specialized subagents you can delegate a self-contained task to via run_subagent. A subagent has no visibility into this conversation — give it a complete, standalone task description. Only delegate when it's a genuine fit for a listed subagent's purpose; otherwise just do the task yourself.\n\n${subagentsIndex}`;
 }
 
 function renderProjectContext({ tree, manifest, readme }) {
@@ -46,12 +67,16 @@ export function buildSystemPrompt({
   plannerOutput,
   customAddendum,
   adminPrompt,
+  memory,
   skillsIndex,
   skillsIndexMode = "full",
+  subagentsIndex,
 }) {
   const parts = [BASE_TEMPLATE];
   if (adminPrompt) parts.push(renderAdminPrompt(adminPrompt));
+  if (memory) parts.push(renderMemory(memory));
   if (skillsIndex) parts.push(renderSkillsIndex(skillsIndex, skillsIndexMode));
+  if (subagentsIndex) parts.push(renderSubagentsIndex(subagentsIndex));
   if (projectContext) parts.push(renderProjectContext(projectContext));
   if (plannerOutput) parts.push(`## Current plan\n${plannerOutput}`);
   if (customAddendum) parts.push(`## Additional instructions\n${customAddendum}`);

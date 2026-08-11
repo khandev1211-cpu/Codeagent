@@ -2,7 +2,8 @@ import { isDestructive } from "../safety/policy.js";
 import { evaluatePermissionRules } from "../safety/permissionRules.js";
 import { describePlannedAction } from "../safety/planMode.js";
 import { LimitExceededError, ToolError } from "../utils/errors.js";
-import { HOOK_EVENTS, NULL_HOOK_REGISTRY } from "../hooks/index.js";
+import { HOOK_EVENTS, NULL_HOOK_REGISTRY, logHookBlock } from "../hooks/index.js";
+import { buildRestrictedToolRegistry, buildSubagentSystemPrompt } from "./subagent.js";
 
 /**
  * Runs one user turn to completion: send -> tool_use -> execute -> tool_result
@@ -21,6 +22,7 @@ export class Orchestrator {
     hookRegistry = NULL_HOOK_REGISTRY,
     permissionRules = [],
     skillRegistry = null,
+    subagentRegistry = null,
   }) {
     this.provider = provider;
     this.toolRegistry = toolRegistry;
@@ -36,6 +38,10 @@ export class Orchestrator {
     // callers/tests that construct an Orchestrator without skills keep
     // working unchanged.
     this.skillRegistry = skillRegistry;
+    // Only consumed by the run_subagent tool (docs/22) — resolves a
+    // subagent name to its definition (instructions + tool restriction).
+    // Optional for the same reason skillRegistry is.
+    this.subagentRegistry = subagentRegistry;
   }
 
   /**
@@ -55,6 +61,53 @@ export class Orchestrator {
     this.provider = provider;
     if (providerName) this.config = { ...this.config, provider: providerName };
     if (model) this.config = { ...this.config, model };
+  }
+
+  /**
+   * Executes one subagent invocation to completion (docs/22). Reuses
+   * this.provider/confirm/hookRegistry/permissionRules/contextManager/
+   * config/logger — NOT copies — so every safety mechanism (confirmation
+   * prompts, hooks, permission rules, Plan Mode) applies identically
+   * inside the subagent's own tool calls as it would at the top level.
+   * Only toolRegistry (restricted) and message history (fresh, empty)
+   * differ from the parent.
+   */
+  async _runSubagentTurn(definition, task, cwd) {
+    const restrictedToolRegistry = buildRestrictedToolRegistry(this.toolRegistry, definition.tools);
+    const subOrchestrator = new Orchestrator({
+      provider: this.provider,
+      toolRegistry: restrictedToolRegistry,
+      confirm: this.confirm,
+      config: this.config,
+      logger: this.logger,
+      contextManager: this.contextManager,
+      diffTracker: this.diffTracker,
+      hookRegistry: this.hookRegistry,
+      permissionRules: this.permissionRules,
+      skillRegistry: this.skillRegistry,
+      // subagentRegistry deliberately omitted: restrictedToolRegistry
+      // already excludes run_subagent (docs/22's recursion boundary), so
+      // there is nothing that would ever read it — omitting it here too
+      // makes that boundary doubly explicit rather than relying on the
+      // tool-registry exclusion alone.
+    });
+
+    const result = await subOrchestrator.runTurn({
+      messages: [],
+      userInput: task,
+      system: buildSubagentSystemPrompt(definition),
+      cwd,
+    });
+
+    const lastMessage = result.history[result.history.length - 1];
+    const finalText = Array.isArray(lastMessage?.content)
+      ? lastMessage.content
+          .filter((b) => b.type === "text")
+          .map((b) => b.text)
+          .join("\n")
+      : "";
+
+    return { finalText, iterations: result.iterations, usage: result.usage };
   }
 
   async runTurn({ messages, userInput, system, cwd, onEvent = () => {} }) {
@@ -129,6 +182,15 @@ export class Orchestrator {
           // replacement for it — this can only say no, never auto-approve
           // (PLAN.md Phase 3 / doc 16's explicit "no silent bypass"
           // requirement). confirm() below never even runs in this branch.
+          // logHookBlock gives this a persistent audit entry, matching
+          // --yolo's logBypass — onEvent alone only reaches the live UI,
+          // nothing persists it once the session ends (src/hooks/audit.js).
+          logHookBlock(this.logger, {
+            event: HOOK_EVENTS.PRE_TOOL_USE,
+            toolName: tool.name,
+            input: block.input,
+            reason: preHook.reason,
+          });
           onEvent({ type: "tool_blocked", tool: tool.name, reason: preHook.reason });
           toolResultContent.push({
             type: "tool_result",
@@ -196,6 +258,8 @@ export class Orchestrator {
             diffTracker: this.diffTracker,
             logger: this.logger,
             skillRegistry: this.skillRegistry,
+            subagentRegistry: this.subagentRegistry,
+            runSubagentTurn: (definition, task, subCwd) => this._runSubagentTurn(definition, task, subCwd),
           });
         } catch (err) {
           // Caught at the loop level, converted into a tool_result the model
@@ -223,8 +287,15 @@ export class Orchestrator {
         if (postHook.blocked) {
           // The action already happened — a PostToolUse hook exiting 2
           // can't undo it, so this is logged rather than enforced (doc 16).
-          this.logger?.warn(`PostToolUse hook signaled block after execution (ignored): ${tool.name}`, {
+          // Same audit shape as the PreToolUse block above (logHookBlock),
+          // at warn level since this is reporting something that couldn't
+          // actually be stopped, not a clean veto.
+          logHookBlock(this.logger, {
+            event: HOOK_EVENTS.POST_TOOL_USE,
+            toolName: tool.name,
+            input: block.input,
             reason: postHook.reason,
+            level: "warn",
           });
         }
 

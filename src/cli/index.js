@@ -24,6 +24,8 @@ import { handleModelsCommand } from "./models.js";
 import { handleMistralModelsCommand } from "./mistralModels.js";
 import { HookRegistry, HOOK_EVENTS, loadHooksConfig } from "../hooks/index.js";
 import { SkillRegistry, wireSkillsIndex } from "../skills/index.js";
+import { SubagentRegistry, wireSubagentsIndex } from "../agent/subagentRegistry.js";
+import { loadMemory, formatMemoryForPrompt } from "../agent/memory.js";
 import { loadPermissionRules } from "../safety/permissionRules.js";
 
 function buildCliConfigOverrides(opts) {
@@ -47,6 +49,8 @@ async function oneShot(request, { config, logger, cwd }) {
   const { rules: permissionRules } = loadPermissionRules({ cwd });
   const skillRegistry = new SkillRegistry({ cwd, logger });
   const { skillsIndex, skillsIndexMode } = wireSkillsIndex({ skillRegistry, toolRegistry, config });
+  const subagentRegistry = new SubagentRegistry({ cwd, logger });
+  const { subagentsIndex } = wireSubagentsIndex({ subagentRegistry, toolRegistry });
 
   const orchestrator = new Orchestrator({
     provider,
@@ -59,15 +63,19 @@ async function oneShot(request, { config, logger, cwd }) {
     hookRegistry,
     permissionRules,
     skillRegistry,
+    subagentRegistry,
   });
 
   const projectContext = await buildProjectContext(cwd);
+  const memory = formatMemoryForPrompt(await loadMemory({ cwd }));
   const system = buildSystemPrompt({
     projectContext,
     customAddendum: config.customSystemPromptAddendum,
     adminPrompt: config.adminSystemPrompt,
+    memory,
     skillsIndex,
     skillsIndexMode,
+    subagentsIndex,
   });
 
   await hookRegistry.run(HOOK_EVENTS.SESSION_START, { sessionId: session.id, cwd });
@@ -225,6 +233,38 @@ function skillsCommand({ cwd }) {
     renderText(`${skill.name}`);
     renderText(`  ${skill.description}`);
     renderText(`  file: ${skill.path}${skill.allowedTools ? `  allowed-tools: ${skill.allowedTools.join(", ")}` : ""}`);
+  }
+}
+
+function subagentsCommand({ cwd }) {
+  const registry = new SubagentRegistry({ cwd, logger: { warn: (msg) => renderText(`(warning) ${msg}`) } });
+  const subagents = registry.list();
+  if (subagents.length === 0) {
+    renderText('No subagents configured. Add .codeagent/agents/<name>.md to define one — see docs/22.');
+    return;
+  }
+  for (const subagent of subagents) {
+    renderText(`${subagent.name}`);
+    renderText(`  ${subagent.description}`);
+    renderText(`  file: ${subagent.path}${subagent.tools ? `  tools: ${subagent.tools.join(", ")}` : "  tools: (all, minus run_subagent)"}`);
+  }
+}
+
+async function memoryCommand({ cwd }) {
+  const { global, project } = await loadMemory({ cwd });
+  if (!global && !project) {
+    renderText("No memory files found. Create AGENTS.md at the project root, or ~/.codeagent/AGENTS.md for personal cross-project instructions — see docs/23.");
+    return;
+  }
+  if (global) {
+    renderText(`~/.codeagent/AGENTS.md (${global.length} chars, loaded for every project)`);
+  } else {
+    renderText("~/.codeagent/AGENTS.md: not found");
+  }
+  if (project) {
+    renderText(`AGENTS.md (${project.length} chars, this project only)`);
+  } else {
+    renderText("AGENTS.md: not found in this project");
   }
 }
 
@@ -387,6 +427,20 @@ export async function run(argv) {
     .description("List skills discovered in .codeagent/skills/")
     .action(() => {
       skillsCommand({ cwd: process.cwd() });
+    });
+
+  program
+    .command("subagents")
+    .description("List subagents discovered in .codeagent/agents/")
+    .action(() => {
+      subagentsCommand({ cwd: process.cwd() });
+    });
+
+  program
+    .command("memory")
+    .description("Show which AGENTS.md memory files are loaded for this session")
+    .action(async () => {
+      await memoryCommand({ cwd: process.cwd() });
     });
 
   program

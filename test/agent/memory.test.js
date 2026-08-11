@@ -1,74 +1,79 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import fs from "fs";
-import path from "path";
-import os from "os";
-import { discoverProjectMemory, formatMemoryForPrompt } from "../../src/agent/memory.js";
-import { buildSystemPrompt } from "../../src/agent/systemPrompt.js";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { loadMemory, formatMemoryForPrompt } from "../../src/agent/memory.js";
 
-describe("Project Memory System", () => {
-  let tmpDir;
+describe("loadMemory", () => {
+  let cwd;
+  let homedir;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-memory-test-"));
+    cwd = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-project-"));
+    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-home-"));
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(cwd, { recursive: true, force: true });
+    fs.rmSync(homedir, { recursive: true, force: true });
   });
 
-  it("returns empty structure when no memory files exist", () => {
-    const memory = discoverProjectMemory(tmpDir);
-    expect(memory.rootFile).toBeNull();
-    expect(memory.rootContent).toBeNull();
-    expect(memory.rules).toEqual([]);
-    expect(formatMemoryForPrompt(memory)).toBeNull();
+  it("returns { global: null, project: null } when neither file exists", async () => {
+    const result = await loadMemory({ cwd, homedir });
+    expect(result).toEqual({ global: null, project: null });
   });
 
-  it("discovers CODEAGENT.md at project root", () => {
-    fs.writeFileSync(path.join(tmpDir, "CODEAGENT.md"), "# Codeagent Project Guidelines\n- Always use async/await");
-    const memory = discoverProjectMemory(tmpDir);
-    expect(memory.rootFile).toBe("CODEAGENT.md");
-    expect(memory.rootContent).toBe("# Codeagent Project Guidelines\n- Always use async/await");
-
-    const promptText = formatMemoryForPrompt(memory);
-    expect(promptText).toContain("## Project memory & instructions");
-    expect(promptText).toContain("### Instructions from CODEAGENT.md");
-    expect(promptText).toContain("- Always use async/await");
+  it("loads a project-level AGENTS.md at the repo root", async () => {
+    fs.writeFileSync(path.join(cwd, "AGENTS.md"), "Use tabs, not spaces.");
+    const result = await loadMemory({ cwd, homedir });
+    expect(result.project).toBe("Use tabs, not spaces.");
+    expect(result.global).toBeNull();
   });
 
-  it("falls back to CLAUDE.md if CODEAGENT.md is absent", () => {
-    fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "# Claude Guidelines\n- Write unit tests");
-    const memory = discoverProjectMemory(tmpDir);
-    expect(memory.rootFile).toBe("CLAUDE.md");
-    expect(memory.rootContent).toBe("# Claude Guidelines\n- Write unit tests");
-
-    const promptText = formatMemoryForPrompt(memory);
-    expect(promptText).toContain("### Instructions from CLAUDE.md");
+  it("loads a global AGENTS.md at ~/.codeagent/AGENTS.md", async () => {
+    fs.mkdirSync(path.join(homedir, ".codeagent"), { recursive: true });
+    fs.writeFileSync(path.join(homedir, ".codeagent", "AGENTS.md"), "I prefer concise commit messages.");
+    const result = await loadMemory({ cwd, homedir });
+    expect(result.global).toBe("I prefer concise commit messages.");
+    expect(result.project).toBeNull();
   });
 
-  it("discovers and sorts rules in .codeagent/rules/*.md", () => {
-    const rulesDir = path.join(tmpDir, ".codeagent", "rules");
-    fs.mkdirSync(rulesDir, { recursive: true });
-    fs.writeFileSync(path.join(rulesDir, "testing.md"), "Rule: Must achieve 80% coverage");
-    fs.writeFileSync(path.join(rulesDir, "style.md"), "Rule: Use ESLint standard");
-
-    const memory = discoverProjectMemory(tmpDir);
-    expect(memory.rules).toHaveLength(2);
-    expect(memory.rules[0].filename).toBe("style.md");
-    expect(memory.rules[1].filename).toBe("testing.md");
-
-    const promptText = formatMemoryForPrompt(memory);
-    expect(promptText).toContain("### Rule: style.md\nRule: Use ESLint standard");
-    expect(promptText).toContain("### Rule: testing.md\nRule: Must achieve 80% coverage");
+  it("loads both levels independently when both exist", async () => {
+    fs.mkdirSync(path.join(homedir, ".codeagent"), { recursive: true });
+    fs.writeFileSync(path.join(homedir, ".codeagent", "AGENTS.md"), "global instructions");
+    fs.writeFileSync(path.join(cwd, "AGENTS.md"), "project instructions");
+    const result = await loadMemory({ cwd, homedir });
+    expect(result.global).toBe("global instructions");
+    expect(result.project).toBe("project instructions");
   });
 
-  it("includes formatted project memory in buildSystemPrompt", () => {
-    const memoryText = "## Project memory & instructions\n### Instructions from CODEAGENT.md\n- Strict type safety";
-    const prompt = buildSystemPrompt({
-      projectMemory: memoryText,
-    });
+  it("truncates a file larger than the character cap rather than loading it whole", async () => {
+    fs.writeFileSync(path.join(cwd, "AGENTS.md"), "x".repeat(10_000));
+    const result = await loadMemory({ cwd, homedir });
+    expect(result.project.length).toBeLessThan(10_000);
+    expect(result.project).toContain("truncated");
+  });
+});
 
-    expect(prompt).toContain("## Project memory & instructions");
-    expect(prompt).toContain("- Strict type safety");
+describe("formatMemoryForPrompt", () => {
+  it("returns null when neither level has content", () => {
+    expect(formatMemoryForPrompt({ global: null, project: null })).toBeNull();
+  });
+
+  it("includes only the project section when global is absent", () => {
+    const result = formatMemoryForPrompt({ global: null, project: "project rules" });
+    expect(result).toContain("project rules");
+    expect(result).not.toContain("Personal preferences");
+  });
+
+  it("includes only the global section when project is absent", () => {
+    const result = formatMemoryForPrompt({ global: "global rules", project: null });
+    expect(result).toContain("global rules");
+    expect(result).not.toContain("Project instructions");
+  });
+
+  it("orders global before project when both are present", () => {
+    const result = formatMemoryForPrompt({ global: "GLOBAL_MARKER", project: "PROJECT_MARKER" });
+    expect(result.indexOf("GLOBAL_MARKER")).toBeLessThan(result.indexOf("PROJECT_MARKER"));
   });
 });

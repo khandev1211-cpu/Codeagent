@@ -60,11 +60,8 @@ Where codeagent is headed, and honestly, what's real today versus what's still d
 | **Skills** (discoverable `SKILL.md` folders, progressive disclosure) | ✅ Shipped | Project-scoped (`.codeagent/skills/`) only for now. **102 skills ship with the repo**, spanning languages, testing, git workflow, code quality, APIs, databases, security, DevOps, frontend, docs, performance, debugging, concurrency, architecture, cloud, mobile, and more. Two-tier index (`config.skillsIndexMode`, default `"compact"`): system prompt carries names only (~535 tokens at this scale, down from ~6,100), descriptions fetched on demand via the `skill_info` tool — see `docs/19`. `allowed-tools` is parsed but still not enforced against skills specifically. See `codeagent skills`. |
 | Fine-grained permission rules & Plan Mode | ✅ Shipped (v1) | Evolves the existing confirm/`--yolo` safety layer rather than replacing it — deny always wins over allow; `--plan` makes destructive tools describe instead of execute, for the whole session. Both verified against real tools and real files, not just unit tests. No in-REPL toggle yet (waiting on Slash Commands). See `docs/20`, `codeagent permissions`. |
 | **Rich TUI** (Ink-based, live status header, mid-session model switcher) | ✅ Shipped (v1) | Automatic when both stdin/stdout are a real TTY; falls back to the plain REPL otherwise (piped input, CI) or if `CODEAGENT_PLAIN_REPL=1`. History carries over across a switch — the same guarantee as `codeagent use`, now reachable without leaving the session. See `docs/21`. |
-| **Subagents** | ✅ Shipped (v1) | Isolated child agents with restricted tool sets — `run_subagent` tool, `.codeagent/agents/<name>.md` definitions, `SubagentRegistry` + `wireSubagentsIndex`, built-in `general-researcher`. See `docs/22`. |
-| **MCP client** (connect external tool servers) | ✅ Shipped (v1) | `.codeagent/mcp.json` config, stdio transport, dynamic tool registration. See `implementation_plan.md`. |
-| **Web tools** (`web_search`, `web_fetch`) | ✅ Shipped | Read-only web access — search documentation, fetch URLs, convert HTML to plain text. No API key required. |
-| **In-REPL Slash Commands** | ✅ Shipped | `/help`, `/plan`, `/compact`, `/clear`, `/review`, `/test` — plus custom commands in `.codeagent/commands/`. |
-| **Project Memory** (`CODEAGENT.md` / `.codeagent/rules/`) | ✅ Shipped | Auto-discovered project instructions injected into the system prompt. |
+| **Subagents** | ✅ Shipped (v1) | Scoped, single-level task delegation via the `run_subagent` tool — explicit invocation only, no automatic delegation. Filesystem definitions (`.codeagent/agents/<name>.md`, same frontmatter shape as Skills). Reuses `Orchestrator` itself for execution (docs/22's core decision) rather than a second engine, so confirm/hooks/permission-rules/Plan Mode all apply identically inside a subagent's own tool calls — no separate, weaker safety path. A subagent's tool registry always excludes `run_subagent` (no recursion, v1 boundary); a definition's `tools:` field can narrow the tool subset further but never grant beyond what the parent has. Synchronous only — the main loop blocks until the subagent finishes. See `docs/22`, `codeagent subagents`. |
+| **MCP client** (connect external tool servers) | 🚧 Planned | Separate from the LLM provider adapters above — this is a new *tool* source, not a new provider. |
 | **Plugins** (bundle Skills+Subagents+Hooks+MCP, install from GitHub/npm/local path) | 🚧 Planned | Deliberately last — in real Claude Code a plugin is a packaging format over the four items above, so building it first would ship an empty container. |
 | Interactive config manager, usage/cost tracking | 🚧 Planned | Lower priority than the above; see `PLAN.md` Phase 9. |
 
@@ -148,30 +145,11 @@ codeagent use <provider> [model]  Switch the active provider/model (persists; hi
 codeagent system-prompt [show|set <text>|clear]   Manage your global admin system prompt
 ```
 
-### In-REPL Slash Commands
-
-Inside an interactive session, type `/` to access built-in commands:
-
-```
-/help       List available slash commands
-/plan       Toggle Plan Mode (read-only action dry-runs)
-/compact    Compact context window history
-/clear      Clear terminal screen
-/review     Review recent changes or specified files for quality and bugs
-/test       Run the test suite and fix any failing tests
-```
-
-Custom slash commands can be defined in `.codeagent/commands/<name>.md` — the first line (if a markdown header) becomes the description, the rest becomes the prompt template. Use `$ARG` in the template to interpolate the user's argument.
-
 > **Setup wizard:** `codeagent setup` walks you through it once — provider, key, model — and remembers it in `~/.codeagentrc`. Run it again anytime to add another provider, switch your default, or reconfigure a key; on a completely fresh install, just running `codeagent` triggers it automatically before your first command.
 
-> **Interactive session:** in a real terminal, `codeagent` (no arguments) launches the rich Ink-based TUI automatically — a live status header plus Tab to open a model switcher mid-session. Piped input, CI, or `CODEAGENT_PLAIN_REPL=1` all fall back to the plain-text REPL instead. See `docs/21`.
+> **Interactive session:** a real terminal (stdin *and* stdout both TTYs) gets the rich Ink-based TUI automatically — live status header, Tab to open a model switcher mid-session. Piped input, CI, and other non-interactive contexts automatically get the plain scrolling REPL instead, which is also always available on demand via `CODEAGENT_PLAIN_REPL=1`. See `docs/21`.
 
-> **Subagents:** delegate well-scoped sub-tasks to isolated child agents via the `run_subagent` tool. Built-in `general-researcher` is always available; define custom agents in `.codeagent/agents/<name>.md` with YAML frontmatter (`name`, `description`, `tools`). Subagents share the parent's safety layer — same confirm, hooks, permission rules, and Plan Mode. See `docs/22`.
-
-> **MCP client:** connect external Model Context Protocol servers by adding a `.codeagent/mcp.json` file. Tools from connected servers are dynamically registered and available to the agent. See `implementation_plan.md`.
-
-> **Web tools:** `web_search` and `web_fetch` give the agent read-only web access — searching for documentation, fetching URLs, and converting HTML to plain text. No API key required.
+> **Interactive session:** in a real terminal, `codeagent` (no arguments) launches the rich Ink-based TUI — a live status header plus Tab to open a model switcher mid-session. Piped input, CI, or `CODEAGENT_PLAIN_REPL=1` all fall back to the plain-text REPL instead. See `docs/21`.
 
 ### Interactive REPL
 
@@ -346,7 +324,7 @@ If you want the agent to run unattended (e.g., in a script or CI), pass `--yolo`
 
 ## Tools
 
-codeagent ships with a growing tool set that gives the agent full control over your project:
+codeagent ships with six core tools that give the agent full control over your project:
 
 | Tool | Destructive | Purpose |
 |---|---|---|
@@ -356,10 +334,6 @@ codeagent ships with a growing tool set that gives the agent full control over y
 | `list_dir` | No | Explore project structure |
 | `search_code` | No | Regex search across the codebase |
 | `run_bash` | Yes | Execute shell commands |
-| `skill_info` | No | Look up skill descriptions by name (compact skills index mode) |
-| `run_subagent` | No | Delegate a sub-task to an isolated child agent |
-| `web_search` | No | Search the web for documentation and solutions |
-| `web_fetch` | No | Fetch a URL and convert HTML to plain text |
 
 Adding a new tool is an **additive** change — create one file in `src/tools/` and register it. No core files need to change.
 
@@ -393,7 +367,7 @@ Full architecture and design docs live in [`docs/`](./docs):
 | [19 — Skills](./docs/19-skills.md) | `SKILL.md` discovery, progressive disclosure, `.codeagent/skills/` |
 | [20 — Permission Rules & Plan Mode](./docs/20-permission-rules-and-plan-mode.md) | Fine-grained allow/deny rules, `--plan` read-only execution mode, precedence with Hooks and Safety |
 | [21 — Rich TUI](./docs/21-rich-tui.md) | Ink-based interactive session — status header, mid-session model switcher |
-| [22 — Subagents](./docs/22-subagents.md) | Design writeup for Phase 6 — isolated child agents, tool-subset restriction, synchronous execution |
+| [22 — Subagents](./docs/22-subagents.md) | Scoped single-level task delegation, design writeup + implementation notes |
 
 ---
 

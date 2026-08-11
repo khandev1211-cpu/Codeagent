@@ -1,28 +1,47 @@
-import { z } from "zod";
-import { SubagentRunner } from "../agent/subagent.js";
-
-export const runSubagentTool = {
+/**
+ * Explicit invocation only (docs/22) — the model calls this with a
+ * subagent name and a task description; it does not decide on its own to
+ * delegate. The actual execution (scoped Orchestrator, restricted tools,
+ * fresh history) lives in Orchestrator._runSubagentTurn (src/agent/
+ * orchestrator.js) via ctx.runSubagentTurn — this tool is a thin
+ * dispatcher: validate the name, hand off, shape the result.
+ *
+ * destructive: false is deliberate, not an oversight — see docs/22's
+ * "core design decision" section for why: the subagent's own destructive
+ * tool calls are independently gated by the exact same confirm/hooks/
+ * permission-rules the parent uses, so this outer call carries no risk
+ * of its own that would need a separate confirmation.
+ */
+export const runSubagent = {
   name: "run_subagent",
-  description: "Delegate a sub-task to a specialized subagent (e.g. general-researcher or custom agents in .codeagent/agents/).",
+  description:
+    "Delegate a task to a specialized subagent (from .codeagent/agents/). The subagent runs independently with its own context — it cannot see this conversation's history, only the task string given here — and returns its final answer.",
+  input_schema: {
+    type: "object",
+    properties: {
+      name: { type: "string", description: "Subagent name, as it appears in the subagents index." },
+      task: { type: "string", description: "The task to hand off, as a complete, self-contained description." },
+    },
+    required: ["name", "task"],
+  },
   destructive: false,
-  parameters: z.object({
-    agent: z.string().describe("Name of the subagent to run (e.g. 'general-researcher')"),
-    task: z.string().describe("Specific task or query for the subagent to execute"),
-  }),
-
-  async execute({ agent, task }, { cwd, config, logger }) {
-    if (!config?.provider) {
-      throw new Error("Provider instance is required to execute subagents.");
+  async execute(input, ctx) {
+    if (!ctx.subagentRegistry) {
+      return { ok: false, error: "No subagents are configured for this project." };
+    }
+    const definition = ctx.subagentRegistry.get(input.name);
+    if (!definition) {
+      return {
+        ok: false,
+        error: `Unknown subagent: ${input.name}`,
+        available: ctx.subagentRegistry.list().map((s) => s.name),
+      };
+    }
+    if (!ctx.runSubagentTurn) {
+      return { ok: false, error: "Subagents are not available in this execution context." };
     }
 
-    const runner = new SubagentRunner({
-      provider: config.provider,
-      config,
-      logger,
-      cwd,
-    });
-
-    const result = await runner.run({ agentName: agent, task });
-    return `Subagent '${result.agent}' output:\n\n${result.summary}`;
+    const result = await ctx.runSubagentTurn(definition, input.task, ctx.cwd);
+    return { ok: true, subagent: definition.name, ...result };
   },
 };

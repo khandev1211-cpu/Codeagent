@@ -34,7 +34,9 @@ export function App({
   permissionRules = [],
   skillRegistry,
   skillsIndexMode = "full",
+  subagentRegistry,
   projectContext,
+  memory,
   configuredProviders = {},
 }) {
   const { exit } = useApp();
@@ -59,6 +61,7 @@ export function App({
       hookRegistry,
       permissionRules,
       skillRegistry,
+      subagentRegistry,
     })
   );
 
@@ -143,8 +146,10 @@ export function App({
         plannerOutput,
         customAddendum: config.customSystemPromptAddendum,
         adminPrompt: config.adminSystemPrompt,
+        memory,
         skillsIndex: skillsIndexMode === "compact" ? skillRegistry.formatCompactIndexForPrompt() : skillRegistry.formatIndexForPrompt(),
         skillsIndexMode,
+        subagentsIndex: subagentRegistry?.formatIndexForPrompt(),
       });
 
       const result = await orchestratorRef.current.runTurn({

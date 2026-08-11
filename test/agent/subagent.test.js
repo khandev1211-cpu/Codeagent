@@ -1,82 +1,42 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import fs from "fs";
-import path from "path";
-import os from "os";
-import { discoverSubagents, SubagentRunner } from "../../src/agent/subagent.js";
-import { runSubagentTool } from "../../src/tools/runSubagent.js";
+import { describe, it, expect } from "vitest";
+import { buildRestrictedToolRegistry, buildSubagentSystemPrompt } from "../../src/agent/subagent.js";
+import { ToolRegistry } from "../../src/tools/registry.js";
 
-describe("Subagents Framework", () => {
-  let tmpDir;
+function makeTool(name) {
+  return { name, description: name, destructive: false, input_schema: { type: "object", properties: {} }, async execute() {} };
+}
 
-  beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-subagent-test-"));
+describe("buildRestrictedToolRegistry", () => {
+  const parent = new ToolRegistry([makeTool("read_file"), makeTool("write_file"), makeTool("run_subagent")]);
+
+  it("always excludes run_subagent, even when allowedToolNames is null (inherit everything)", () => {
+    const scoped = buildRestrictedToolRegistry(parent, null);
+    expect(scoped.has("run_subagent")).toBe(false);
+    expect(scoped.has("read_file")).toBe(true);
+    expect(scoped.has("write_file")).toBe(true);
   });
 
-  afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+  it("narrows to the given tool names when allowedToolNames is provided", () => {
+    const scoped = buildRestrictedToolRegistry(parent, ["read_file"]);
+    expect(scoped.has("read_file")).toBe(true);
+    expect(scoped.has("write_file")).toBe(false);
   });
 
-  it("discovers custom subagents from .codeagent/agents/*.md", () => {
-    const agentsDir = path.join(tmpDir, ".codeagent", "agents");
-    fs.mkdirSync(agentsDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(agentsDir, "reviewer.md"),
-      `---
-name: reviewer
-description: Code quality reviewer
-allowed-tools: read_file
----
-Review code for vulnerabilities.`
-    );
-
-    const discovered = discoverSubagents(tmpDir);
-    expect(discovered.reviewer).toBeDefined();
-    expect(discovered.reviewer.description).toBe("Code quality reviewer");
-    expect(discovered.reviewer.allowedTools).toEqual(["read_file"]);
-    expect(discovered.reviewer.prompt).toContain("Review code for vulnerabilities.");
+  it("never grants a tool the parent doesn't have, even if named in allowedToolNames", () => {
+    const scoped = buildRestrictedToolRegistry(parent, ["read_file", "run_bash"]);
+    expect(scoped.has("read_file")).toBe(true);
+    expect(scoped.has("run_bash")).toBe(false);
   });
 
-  it("runs subagent with mock provider and returns output summary", async () => {
-    const mockProvider = {
-      async send(history, schemas, { system }) {
-        return {
-          content: [{ type: "text", text: "Summary: Code structure is clean." }],
-          usage: { inputTokens: 50, outputTokens: 20 },
-        };
-      },
-    };
-
-    const runner = new SubagentRunner({
-      provider: mockProvider,
-      config: { maxIterationsPerTurn: 5 },
-      cwd: tmpDir,
-    });
-
-    const result = await runner.run({
-      agentName: "general-researcher",
-      task: "Analyze directory structure",
-    });
-
-    expect(result.agent).toBe("general-researcher");
-    expect(result.summary).toContain("Summary: Code structure is clean.");
+  it("excludes run_subagent even when explicitly named in allowedToolNames", () => {
+    const scoped = buildRestrictedToolRegistry(parent, ["read_file", "run_subagent"]);
+    expect(scoped.has("run_subagent")).toBe(false);
   });
+});
 
-  it("executes run_subagent tool correctly", async () => {
-    const mockProvider = {
-      async send() {
-        return {
-          content: [{ type: "text", text: "Analysis completed." }],
-          usage: { inputTokens: 10, outputTokens: 5 },
-        };
-      },
-    };
-
-    const output = await runSubagentTool.execute(
-      { agent: "general-researcher", task: "Check docs" },
-      { cwd: tmpDir, config: { provider: mockProvider } }
-    );
-
-    expect(output).toContain("Subagent 'general-researcher' output:");
-    expect(output).toContain("Analysis completed.");
+describe("buildSubagentSystemPrompt", () => {
+  it("returns exactly the definition's instructions, with no composition with a parent prompt", () => {
+    const definition = { name: "x", description: "d", instructions: "Only these instructions." };
+    expect(buildSubagentSystemPrompt(definition)).toBe("Only these instructions.");
   });
 });

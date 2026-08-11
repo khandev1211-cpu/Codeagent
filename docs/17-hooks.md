@@ -64,6 +64,10 @@ A hook process receives the event payload as JSON on stdin (also exposed as `COD
 - It does not retry a blocked call automatically or rewrite the tool's input — a block is terminal for that call; the model sees why and can adjust its next request.
 - It does not (yet) support personal- or plugin-scoped hooks, HTTP/prompt/agent hook types, or an `Stop`/`SubagentStop`-style event set — all explicitly deferred, not overlooked (doc 16).
 
+## Audit logging (`src/hooks/audit.js`)
+
+Every hook-driven block gets a persistent audit entry via `logHookBlock`, the same "every bypass is logged" principle `--yolo`'s `logBypass` already applies (doc 07): tool name, input, reason, and a timestamp. This matters because `onEvent` — the callback used for `tool_blocked` — only reaches the live session UI; nothing about it persists once the session ends. Without a logger call as well, a `PreToolUse` block would be visible in the moment but leave no trace afterward, unlike `--yolo` bypasses which always did. `PreToolUse` blocks log at info level (a clean veto, working as intended); `PostToolUse` blocks-after-the-fact log at warn level (the action already happened and couldn't actually be stopped, so it's worth flagging more loudly).
+
 ## Testing this layer
 
 - `test/hooks/runHook.test.js` — the exit-code/timeout/context contract in isolation, against real spawned shells (not mocked, since the contract *is* the shell interaction).

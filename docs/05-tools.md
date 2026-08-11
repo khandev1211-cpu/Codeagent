@@ -63,35 +63,7 @@ This document is the contract for every tool the agent can call. Each tool is a 
 - **Purpose:** Execute shell commands — running tests, installing dependencies, git operations, build scripts.
 - **Destructive:** Yes (always — shell execution is treated as destructive by default regardless of the specific command, since the agent can't reliably pre-classify arbitrary commands as safe).
 - **Input:** `{ command: string, cwd?: string }`
-- **Behavior:** Executed via the cross-platform shell abstraction (picks `bash`/`sh` on POSIX, `cmd.exe` or PowerShell on Windows — this is the one tool most exposed to OS differences, see doc 02's cross-platform note). Captures stdout/stderr and exit code, returns all three to the model. Has a timeout (configurable) so a hanging command doesn't stall the whole session indefinitely. When `config.sandboxMode` is `"auto"` and a sandbox is available, writes are confined to the project root and `allowedWritePaths` (see `docs/15` for the full mechanism and limits).
-
-## The expanded tool set (current)
-
-Beyond the original six, codeagent now ships these additional tools. New tools are added to `BUILTIN_TOOLS` in `src/tools/index.js` — no other file needs to change:
-
-### `skill_info`
-- **Purpose:** Tier-2 lookup for the compact skills index (docs/19). When `config.skillsIndexMode: "compact"` (default), the system prompt carries only skill *names* — this tool returns the description + file path for specific names the model suspects are relevant.
-- **Destructive:** No.
-- **Input:** `{ names: string[] }`
-- **Behavior:** Returns `{ ok: true, skills: [...] }` with `{ name, description, path }` per skill, or `{ ok: false, error }` if no skills are configured / input is malformed. Unknown names return `found: false` rather than erroring. **Deliberately not registered** when `skillsIndexMode: "full"` (that mode already carries descriptions inline, so the tool would be redundant surface area).
-
-### `run_subagent`
-- **Purpose:** Delegate a well-scoped sub-task to an isolated child agent (docs/11's Subagents plan, now shipped) — e.g. `general-researcher`, or custom agents defined in `.codeagent/agents/<name>.md`.
-- **Destructive:** No.
-- **Input:** `{ agent: string, task: string }`
-- **Behavior:** Constructs a fresh `Orchestrator` with an isolated history, a restricted tool registry (defaults to the read-only set `read_file`/`search_code`/`list_dir`, or the `allowed-tools` list from the agent's frontmatter), and a subagent-specific system prompt. Returns the subagent's final text summary plus usage. Requires a configured provider instance to execute.
-
-### `web_search`
-- **Purpose:** Perform a web search for technical documentation, libraries, or error solutions.
-- **Destructive:** No.
-- **Input:** `{ query: string }`
-- **Behavior:** Queries DuckDuckGo's HTML endpoint (no API key required), extracts up to 5 result snippets, and returns them as plain text. 10-second timeout; on failure returns a clear error rather than crashing the session.
-
-### `web_fetch`
-- **Purpose:** Fetch a URL and convert HTML to readable plain text.
-- **Destructive:** No.
-- **Input:** `{ url: string }`
-- **Behavior:** Fetches the URL with a 10-second timeout, strips `<script>`/`<style>`/HTML tags, collapses whitespace, and truncates to 5,000 characters with a clear "...[truncated]" marker. Non-HTML responses (JSON, text) are returned as-is (also truncated to 5,000 chars).
+- **Behavior:** Executed via the cross-platform shell abstraction (picks `bash`/`sh` on POSIX, `cmd.exe` or PowerShell on Windows — this is the one tool most exposed to OS differences, see doc 02's cross-platform note). Captures stdout/stderr and exit code, returns all three to the model. Has a timeout (configurable) so a hanging command doesn't stall the whole session indefinitely.
 
 ## Adding a new tool
 
@@ -99,5 +71,5 @@ Covered in full in doc 11, but the short version: create one new file in `src/to
 
 ## What's explicitly out of scope for tools (v1)
 
-- **Direct database tools** — same reasoning as below; out of v1 scope, would need explicit design if added.
-- Note: **network access tools** (`web_fetch`, `web_search`) are now shipped, with a deliberate design decision: they are marked `destructive: false` because they only perform read-only operations (fetching/searching public content, no local state mutation). They were previously listed as "out of scope without a dedicated safety classification" — that classification is now resolved: read-only network fetches carry the same non-destructive flag as `read_file`, while anything that writes or interacts with local state still routes through the normal Safety Layer.
+- **Network access tools** (arbitrary HTTP requests) — not included by default; if added later, this is exactly the kind of capability that needs its own dedicated safety classification (doc 07), not just reuse of the generic "destructive" flag, since data exfiltration risk is different in kind from local file/shell risk.
+- **Direct database tools** — same reasoning; out of v1 scope, would need explicit design if added.
