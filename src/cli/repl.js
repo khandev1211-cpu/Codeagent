@@ -7,6 +7,7 @@ import { createConfirmer } from "../safety/confirm.js";
 import { SkillRegistry, wireSkillsIndex } from "../skills/index.js";
 import { SubagentRegistry, wireSubagentsIndex } from "../agent/subagentRegistry.js";
 import { loadMemory, formatMemoryForPrompt } from "../agent/memory.js";
+import { SlashCommandRegistry, resolveSlashCommand, formatHelp } from "../agent/slashCommands.js";
 import { renderToolCall, renderToolDeclined, renderToolPlanned, renderError, renderText } from "./render.js";
 import { LimitExceededError } from "../utils/errors.js";
 
@@ -45,6 +46,7 @@ export async function startRepl({
 
   const projectContext = await buildProjectContext(cwd);
   const memory = formatMemoryForPrompt(await loadMemory({ cwd }));
+  const commandRegistry = new SlashCommandRegistry({ cwd, logger });
 
   renderText(`codeagent session ${session.id} — ${session.provider}/${session.model}`);
   renderText("Type your request, or Ctrl+C to exit.\n");
@@ -62,6 +64,35 @@ export async function startRepl({
       break; // stdin closed
     }
     if (!userInput.trim()) continue;
+
+    const slashAction = resolveSlashCommand(userInput, { commandRegistry });
+    if (slashAction.type === "help") {
+      renderText(`\n${formatHelp(commandRegistry)}\n`);
+      continue;
+    }
+    if (slashAction.type === "clear") {
+      session.messages = [];
+      renderText("Conversation history cleared.\n");
+      continue;
+    }
+    if (slashAction.type === "plan-toggle") {
+      // Mutates the same config object reference the Orchestrator holds
+      // (this.config = config, not a copy) — no orchestrator.setConfig()
+      // needed, planMode is already read fresh from config on every
+      // tool dispatch (src/agent/orchestrator.js). Closes the PLAN.md
+      // TODO that deferred this exact toggle until slash-command
+      // recognition existed.
+      config.planMode = !config.planMode;
+      renderText(`Plan Mode ${config.planMode ? "enabled — destructive tools will describe, not execute" : "disabled"}.\n`);
+      continue;
+    }
+    if (slashAction.type === "unknown") {
+      renderText(`Unknown command: /${slashAction.name}. Try /help.\n`);
+      continue;
+    }
+    if (slashAction.type === "prompt") {
+      userInput = slashAction.text;
+    }
 
     let plannerOutput = null;
     if (shouldPlan({ config, userRequest: userInput })) {

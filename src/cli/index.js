@@ -26,6 +26,7 @@ import { HookRegistry, HOOK_EVENTS, loadHooksConfig } from "../hooks/index.js";
 import { SkillRegistry, wireSkillsIndex } from "../skills/index.js";
 import { SubagentRegistry, wireSubagentsIndex } from "../agent/subagentRegistry.js";
 import { loadMemory, formatMemoryForPrompt } from "../agent/memory.js";
+import { SlashCommandRegistry, formatHelp } from "../agent/slashCommands.js";
 import { loadPermissionRules } from "../safety/permissionRules.js";
 
 function buildCliConfigOverrides(opts) {
@@ -268,6 +269,10 @@ async function memoryCommand({ cwd }) {
   }
 }
 
+function commandsCommand({ cwd }) {
+  renderText(formatHelp(new SlashCommandRegistry({ cwd, logger: { warn: (msg) => renderText(`(warning) ${msg}`) } })));
+}
+
 function hooksCommand({ cwd }) {
   let hooksConfig;
   try {
@@ -441,6 +446,13 @@ export async function run(argv) {
     .description("Show which AGENTS.md memory files are loaded for this session")
     .action(async () => {
       await memoryCommand({ cwd: process.cwd() });
+    });
+
+  program
+    .command("commands")
+    .description("List available slash commands (built-in and custom, from .codeagent/commands/)")
+    .action(() => {
+      commandsCommand({ cwd: process.cwd() });
     });
 
   program

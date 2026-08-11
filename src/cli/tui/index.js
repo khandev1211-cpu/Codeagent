@@ -3,6 +3,7 @@ import { h } from "./h.js";
 import { App } from "./App.js";
 import { buildProjectContext } from "../../agent/context.js";
 import { loadMemory, formatMemoryForPrompt } from "../../agent/memory.js";
+import { SlashCommandRegistry } from "../../agent/slashCommands.js";
 import { SkillRegistry, wireSkillsIndex } from "../../skills/index.js";
 import { SubagentRegistry, wireSubagentsIndex } from "../../agent/subagentRegistry.js";
 import { listConfiguredProviders } from "../../config/loader.js";
@@ -28,6 +29,7 @@ export async function startTui({
 }) {
   const projectContext = await buildProjectContext(cwd);
   const memory = formatMemoryForPrompt(await loadMemory({ cwd }));
+  const commandRegistry = new SlashCommandRegistry({ cwd, logger });
   const skillRegistry = new SkillRegistry({ cwd, logger });
   const { skillsIndexMode } = wireSkillsIndex({ skillRegistry, toolRegistry, config });
   const subagentRegistry = new SubagentRegistry({ cwd, logger });
@@ -51,6 +53,7 @@ export async function startTui({
       subagentRegistry,
       projectContext,
       memory,
+      commandRegistry,
       configuredProviders,
     })
   );

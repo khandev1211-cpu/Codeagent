@@ -12,6 +12,7 @@ import { planTurn, shouldPlan } from "../../agent/planner.js";
 import { createConfirmer } from "../../safety/confirm.js";
 import { getProvider } from "../../providers/index.js";
 import { LimitExceededError } from "../../utils/errors.js";
+import { resolveSlashCommand, formatHelp } from "../../agent/slashCommands.js";
 
 /**
  * The Ink-based interactive session — the rich-TUI counterpart to
@@ -37,6 +38,7 @@ export function App({
   subagentRegistry,
   projectContext,
   memory,
+  commandRegistry,
   configuredProviders = {},
 }) {
   const { exit } = useApp();
@@ -132,12 +134,46 @@ export function App({
     if (!trimmed) return;
 
     appendEntry({ type: "user_message", text: trimmed });
+
+    const slashAction = resolveSlashCommand(trimmed, { commandRegistry });
+    if (slashAction.type === "help") {
+      appendEntry({ type: "assistant_text", text: formatHelp(commandRegistry) });
+      return;
+    }
+    if (slashAction.type === "clear") {
+      session.messages = [];
+      setEntries([]);
+      await sessionStore.save(session);
+      return;
+    }
+    if (slashAction.type === "plan-toggle") {
+      // Mutates the same config object reference the Orchestrator holds
+      // (this.config = config, not a copy) — planMode is read fresh from
+      // config on every tool dispatch (src/agent/orchestrator.js), and
+      // setPlanMode keeps the StatusHeader display in sync with it. This
+      // is the toggle PLAN.md deferred until slash-command recognition
+      // existed.
+      config.planMode = !config.planMode;
+      setPlanMode(config.planMode);
+      appendEntry({
+        type: "assistant_text",
+        text: `Plan Mode ${config.planMode ? "enabled — destructive tools will describe, not execute" : "disabled"}.`,
+      });
+      return;
+    }
+    if (slashAction.type === "unknown") {
+      appendEntry({ type: "assistant_text", text: `Unknown command: /${slashAction.name}. Try /help.` });
+      return;
+    }
+
+    const userInput = slashAction.type === "prompt" ? slashAction.text : trimmed;
+
     setWorking(true);
 
     try {
       let plannerOutput = null;
-      if (shouldPlan({ config, userRequest: trimmed })) {
-        plannerOutput = await planTurn({ provider: orchestratorRef.current.provider, userRequest: trimmed });
+      if (shouldPlan({ config, userRequest: userInput })) {
+        plannerOutput = await planTurn({ provider: orchestratorRef.current.provider, userRequest: userInput });
         if (plannerOutput) appendEntry({ type: "assistant_text", text: `Plan:\n${plannerOutput}` });
       }
 
@@ -154,7 +190,7 @@ export function App({
 
       const result = await orchestratorRef.current.runTurn({
         messages: session.messages,
-        userInput: trimmed,
+        userInput,
         system,
         cwd,
         onEvent: (event) => {
