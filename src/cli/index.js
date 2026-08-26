@@ -11,6 +11,7 @@ import { createLogger } from "../utils/logger.js";
 import { getProvider } from "../providers/index.js";
 import { resolveApiKey } from "../providers/resolveApiKey.js";
 import { createDefaultRegistry } from "../tools/index.js";
+import { ToolRegistry } from "../tools/registry.js";
 import { SessionStore } from "../session/store.js";
 import { Orchestrator } from "../agent/orchestrator.js";
 import { ContextManager, buildProjectContext } from "../agent/context.js";
@@ -25,8 +26,12 @@ import { handleMistralModelsCommand } from "./mistralModels.js";
 import { HookRegistry, HOOK_EVENTS, loadHooksConfig } from "../hooks/index.js";
 import { SkillRegistry, wireSkillsIndex } from "../skills/index.js";
 import { SubagentRegistry, wireSubagentsIndex } from "../agent/subagentRegistry.js";
+import { connectAllMcpServers, closeAllMcpClients } from "../mcp/index.js";
 import { loadMemory, formatMemoryForPrompt } from "../agent/memory.js";
 import { SlashCommandRegistry, formatHelp } from "../agent/slashCommands.js";
+import { UsageTracker, recordTurnUsage, PRICING_AS_OF } from "../utils/usageTracker.js";
+import { setConfigValue } from "../config/setConfigValue.js";
+import { runConfigManager } from "./configManager.js";
 import { loadPermissionRules } from "../safety/permissionRules.js";
 
 function buildCliConfigOverrides(opts) {
@@ -41,6 +46,7 @@ function buildCliConfigOverrides(opts) {
 async function oneShot(request, { config, logger, cwd }) {
   const provider = getProvider(config, { logger });
   const toolRegistry = createDefaultRegistry();
+  const usageTracker = new UsageTracker();
   const sessionStore = new SessionStore({ projectRoot: cwd });
   const session = sessionStore.create({ provider: config.provider, model: config.model });
   const diffTracker = sessionStore.diffTrackerFor(session);
@@ -52,6 +58,7 @@ async function oneShot(request, { config, logger, cwd }) {
   const { skillsIndex, skillsIndexMode } = wireSkillsIndex({ skillRegistry, toolRegistry, config });
   const subagentRegistry = new SubagentRegistry({ cwd, logger });
   const { subagentsIndex } = wireSubagentsIndex({ subagentRegistry, toolRegistry });
+  const { clients: mcpClients } = await connectAllMcpServers({ cwd, logger, toolRegistry });
 
   const orchestrator = new Orchestrator({
     provider,
@@ -103,12 +110,17 @@ async function oneShot(request, { config, logger, cwd }) {
     session.messages = result.history;
     sessionStore.syncDiffTracker(session, diffTracker);
     await sessionStore.save(session);
+    const quotaStatus = await recordTurnUsage({ usageTracker, cwd, config, usage: result.usage });
+    if (quotaStatus?.overQuota) {
+      renderText(`(quota) ${quotaStatus.provider} estimated spend this month: $${quotaStatus.spent.toFixed(2)} / $${quotaStatus.limit} limit.`);
+    }
     if (process.exitCode === undefined) process.exitCode = 0;
   } catch (err) {
     renderError(err.message);
     process.exitCode = err instanceof LimitExceededError ? 2 : 1;
   } finally {
     await hookRegistry.run(HOOK_EVENTS.SESSION_END, { sessionId: session.id, cwd });
+    await closeAllMcpClients(mcpClients);
   }
 }
 
@@ -142,7 +154,7 @@ async function interactive({ config, logger, cwd, resumeId }) {
   const { rules: permissionRules } = loadPermissionRules({ cwd });
   await hookRegistry.run(HOOK_EVENTS.SESSION_START, { sessionId: session.id, cwd });
 
-  const replParams = { provider, toolRegistry, config, logger, session, sessionStore, diffTracker, cwd, hookRegistry, permissionRules };
+  const replParams = { provider, toolRegistry, config, logger, session, sessionStore, diffTracker, cwd, hookRegistry, permissionRules, usageTracker: new UsageTracker() };
 
   // The rich Ink TUI (docs/21) needs a real terminal on both ends — raw-mode
   // keyboard capture needs stdin to be a TTY, screen redrawing needs stdout
@@ -273,6 +285,70 @@ function commandsCommand({ cwd }) {
   renderText(formatHelp(new SlashCommandRegistry({ cwd, logger: { warn: (msg) => renderText(`(warning) ${msg}`) } })));
 }
 
+async function mcpCommand({ cwd }) {
+  const logger = { warn: (msg) => renderText(`(warning) ${msg}`) };
+  const toolRegistry = new ToolRegistry([]);
+  const result = await connectAllMcpServers({ cwd, logger, toolRegistry });
+  if (result.serverCount === 0) {
+    renderText("No MCP servers configured. Add .codeagent/mcp.json — see docs/25.");
+    await closeAllMcpClients(result.clients);
+    return;
+  }
+  renderText(`${result.tools.length} tool(s) from ${result.serverCount} configured server(s):`);
+  for (const tool of result.tools) {
+    renderText(`  ${tool.name}${tool.destructive ? "" : "  (read-only)"}`);
+  }
+  if (result.errors.length > 0) {
+    renderText("");
+    for (const err of result.errors) {
+      renderText(`(warning) "${err.server}" — ${err.phase}: ${err.error}`);
+    }
+  }
+  await closeAllMcpClients(result.clients);
+}
+
+async function usageCommand({ range }) {
+  const usageTracker = new UsageTracker();
+  const { breakdown, totalEstimatedCostUSD, hasUnknownCost, pricingAsOf } = await usageTracker.getCosts({ range });
+  if (breakdown.length === 0) {
+    renderText(`No usage recorded for range "${range}".`);
+    return;
+  }
+  renderText(`Usage (${range}):`);
+  for (const b of breakdown) {
+    const cost = b.estimatedCostUSD === null ? "cost unknown" : `~$${b.estimatedCostUSD.toFixed(4)}`;
+    renderText(`  ${b.provider}/${b.model}: ${b.calls} call(s), ${b.inputTokens} in / ${b.outputTokens} out tokens, ${cost}`);
+  }
+  renderText(`\nTotal estimated cost: ~$${totalEstimatedCostUSD.toFixed(4)}${hasUnknownCost ? " (some usage above isn't priced and is excluded from this total)" : ""}`);
+  renderText(`Pricing as of ${pricingAsOf} — approximate list prices, not an invoice.`);
+}
+
+async function quotaCommand({ setArgs }) {
+  const usageTracker = new UsageTracker();
+  if (setArgs) {
+    const [provider, limitStr] = setArgs;
+    const limit = Number(limitStr);
+    if (!provider || Number.isNaN(limit)) {
+      renderError("Usage: codeagent quota set <provider> <limitUSD>");
+      process.exitCode = 1;
+      return;
+    }
+    await usageTracker.setQuota(provider, limit);
+    renderText(`Quota for ${provider} set to $${limit}/month.`);
+    return;
+  }
+  const quotas = await usageTracker.getQuotas();
+  const providers = Object.keys(quotas);
+  if (providers.length === 0) {
+    renderText("No quotas configured. Set one with: codeagent quota set <provider> <limitUSD>");
+    return;
+  }
+  for (const provider of providers) {
+    const status = await usageTracker.checkQuota(provider);
+    renderText(`${provider}: $${status.spent.toFixed(2)} / $${status.limit} this month${status.overQuota ? "  (OVER QUOTA)" : ""}`);
+  }
+}
+
 function hooksCommand({ cwd }) {
   let hooksConfig;
   try {
@@ -375,7 +451,23 @@ export function shouldRunFirstTimeSetup(argv, { homedir } = {}) {
 export async function run(argv) {
   if (shouldRunFirstTimeSetup(argv)) {
     const cwd = process.cwd();
-    const config = loadConfig({}, { cwd });
+    let config;
+    try {
+      config = loadConfig({}, { cwd });
+    } catch (err) {
+      // A config file existing-but-invalid (bad hand-edit, corrupted
+      // write) can make configExists() report "not configured" too, if
+      // the corruption happens to also drop/invalidate `providers` —
+      // landing here, not in any command's own try/catch. Fail with the
+      // same friendly, field-specific message every other loadConfig
+      // call site already gives, and point at the two commands that
+      // actually help (validate to see what's wrong, setup to start
+      // fresh), instead of an uncaught stack trace.
+      renderError(err.message);
+      renderText('\nRun "codeagent config validate" for details, or "codeagent setup" to reconfigure from scratch.');
+      process.exitCode = 1;
+      return;
+    }
     const logger = createLogger({ level: config.logLevel });
     renderText("No provider configured yet — let's set one up.\n");
     await runSetupWizard(config, logger);
@@ -407,13 +499,46 @@ export async function run(argv) {
       await sessionsCommand({ cwd: process.cwd() });
     });
 
-  program
+  const configCmd = program
     .command("config")
-    .description("Print the fully resolved config (API key redacted)")
-    .action(() => {
+    .description("Print the fully resolved config (API key redacted); -i for the interactive editor")
+    .option("-i, --interactive", "Interactively edit settings (skills index mode, sandbox mode, Plan Mode default, and more)")
+    .action(async (options) => {
+      if (options.interactive) {
+        const config = loadConfig({}, { cwd: process.cwd() });
+        const logger = createLogger({ level: config.logLevel });
+        await runConfigManager({ logger });
+        return;
+      }
       try {
         const config = loadConfig({}, { cwd: process.cwd() });
         configCommand({ config });
+      } catch (err) {
+        renderError(err.message);
+        process.exitCode = 1;
+      }
+    });
+
+  configCmd
+    .command("set <key> <value>")
+    .description("Set one config value in ~/.codeagentrc — see docs/27 for settable keys")
+    .action((key, value) => {
+      try {
+        const coerced = setConfigValue(key, value);
+        renderText(`✅ ${key} = ${JSON.stringify(coerced)}`);
+      } catch (err) {
+        renderError(err.message);
+        process.exitCode = 1;
+      }
+    });
+
+  configCmd
+    .command("validate")
+    .description("Validate the fully resolved config (global + project + defaults) and report which field failed, if any")
+    .action(() => {
+      try {
+        loadConfig({}, { cwd: process.cwd() });
+        renderText("✅ Config is valid.");
       } catch (err) {
         renderError(err.message);
         process.exitCode = 1;
@@ -453,6 +578,35 @@ export async function run(argv) {
     .description("List available slash commands (built-in and custom, from .codeagent/commands/)")
     .action(() => {
       commandsCommand({ cwd: process.cwd() });
+    });
+
+  program
+    .command("mcp")
+    .description("Connect to configured MCP servers (.codeagent/mcp.json) and list the tools they contribute")
+    .action(async () => {
+      await mcpCommand({ cwd: process.cwd() });
+    });
+
+  program
+    .command("usage")
+    .description("Show estimated token usage and cost (default: this month, across all projects)")
+    .option("--today", "Show today's usage only")
+    .option("--week", "Show the last 7 days' usage")
+    .option("--all", "Show all recorded usage")
+    .action(async (opts) => {
+      const range = opts.today ? "today" : opts.week ? "week" : opts.all ? "all" : "month";
+      await usageCommand({ range });
+    });
+
+  const quotaCmd = program.command("quota").description("Manage soft per-provider monthly spend quotas (warnings only, never blocks a request)");
+  quotaCmd.action(async () => {
+    await quotaCommand({});
+  });
+  quotaCmd
+    .command("set <provider> <limitUSD>")
+    .description("Set a monthly spend quota (USD) for a provider")
+    .action(async (provider, limitUSD) => {
+      await quotaCommand({ setArgs: [provider, limitUSD] });
     });
 
   program

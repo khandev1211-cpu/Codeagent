@@ -8,6 +8,8 @@ import { SkillRegistry, wireSkillsIndex } from "../skills/index.js";
 import { SubagentRegistry, wireSubagentsIndex } from "../agent/subagentRegistry.js";
 import { loadMemory, formatMemoryForPrompt } from "../agent/memory.js";
 import { SlashCommandRegistry, resolveSlashCommand, formatHelp } from "../agent/slashCommands.js";
+import { recordTurnUsage } from "../utils/usageTracker.js";
+import { connectAllMcpServers, closeAllMcpClients } from "../mcp/index.js";
 import { renderToolCall, renderToolDeclined, renderToolPlanned, renderError, renderText } from "./render.js";
 import { LimitExceededError } from "../utils/errors.js";
 
@@ -22,6 +24,7 @@ export async function startRepl({
   cwd,
   hookRegistry,
   permissionRules = [],
+  usageTracker,
 }) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const confirm = createConfirmer({ config, logger });
@@ -30,6 +33,7 @@ export async function startRepl({
   const { skillsIndex, skillsIndexMode } = wireSkillsIndex({ skillRegistry, toolRegistry, config });
   const subagentRegistry = new SubagentRegistry({ cwd, logger });
   const { subagentsIndex } = wireSubagentsIndex({ subagentRegistry, toolRegistry });
+  const { clients: mcpClients } = await connectAllMcpServers({ cwd, logger, toolRegistry });
   const orchestrator = new Orchestrator({
     provider,
     toolRegistry,
@@ -131,6 +135,12 @@ export async function startRepl({
       session.messages = result.history;
       sessionStore.syncDiffTracker(session, diffTracker);
       await sessionStore.save(session);
+      if (usageTracker) {
+        const quotaStatus = await recordTurnUsage({ usageTracker, cwd, config, usage: result.usage });
+        if (quotaStatus?.overQuota) {
+          renderText(`(quota) ${quotaStatus.provider} estimated spend this month: $${quotaStatus.spent.toFixed(2)} / $${quotaStatus.limit} limit.\n`);
+        }
+      }
     } catch (err) {
       if (err instanceof LimitExceededError) {
         renderError(err.message);
@@ -144,4 +154,5 @@ export async function startRepl({
   }
 
   rl.close();
+  await closeAllMcpClients(mcpClients);
 }

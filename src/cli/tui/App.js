@@ -13,6 +13,7 @@ import { createConfirmer } from "../../safety/confirm.js";
 import { getProvider } from "../../providers/index.js";
 import { LimitExceededError } from "../../utils/errors.js";
 import { resolveSlashCommand, formatHelp } from "../../agent/slashCommands.js";
+import { recordTurnUsage } from "../../utils/usageTracker.js";
 
 /**
  * The Ink-based interactive session — the rich-TUI counterpart to
@@ -39,6 +40,7 @@ export function App({
   projectContext,
   memory,
   commandRegistry,
+  usageTracker,
   configuredProviders = {},
 }) {
   const { exit } = useApp();
@@ -221,6 +223,15 @@ export function App({
       session.messages = result.history;
       sessionStore.syncDiffTracker(session, diffTracker);
       await sessionStore.save(session);
+      if (usageTracker) {
+        const quotaStatus = await recordTurnUsage({ usageTracker, cwd, config, usage: result.usage });
+        if (quotaStatus?.overQuota) {
+          appendEntry({
+            type: "assistant_text",
+            text: `(quota) ${quotaStatus.provider} estimated spend this month: $${quotaStatus.spent.toFixed(2)} / $${quotaStatus.limit} limit.`,
+          });
+        }
+      }
     } catch (err) {
       if (err instanceof LimitExceededError) {
         appendEntry({ type: "assistant_text", text: err.message });

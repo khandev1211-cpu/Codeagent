@@ -6,6 +6,7 @@ import { loadMemory, formatMemoryForPrompt } from "../../agent/memory.js";
 import { SlashCommandRegistry } from "../../agent/slashCommands.js";
 import { SkillRegistry, wireSkillsIndex } from "../../skills/index.js";
 import { SubagentRegistry, wireSubagentsIndex } from "../../agent/subagentRegistry.js";
+import { connectAllMcpServers, closeAllMcpClients } from "../../mcp/index.js";
 import { listConfiguredProviders } from "../../config/loader.js";
 
 /**
@@ -26,6 +27,7 @@ export async function startTui({
   cwd,
   hookRegistry,
   permissionRules = [],
+  usageTracker,
 }) {
   const projectContext = await buildProjectContext(cwd);
   const memory = formatMemoryForPrompt(await loadMemory({ cwd }));
@@ -34,6 +36,7 @@ export async function startTui({
   const { skillsIndexMode } = wireSkillsIndex({ skillRegistry, toolRegistry, config });
   const subagentRegistry = new SubagentRegistry({ cwd, logger });
   wireSubagentsIndex({ subagentRegistry, toolRegistry });
+  const { clients: mcpClients } = await connectAllMcpServers({ cwd, logger, toolRegistry });
   const configuredProviders = listConfiguredProviders({});
 
   const instance = render(
@@ -54,9 +57,11 @@ export async function startTui({
       projectContext,
       memory,
       commandRegistry,
+      usageTracker,
       configuredProviders,
     })
   );
 
   await instance.waitUntilExit();
+  await closeAllMcpClients(mcpClients);
 }
