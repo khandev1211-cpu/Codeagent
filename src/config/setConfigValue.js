@@ -101,4 +101,6 @@ export const INTERACTIVE_CONFIG_FIELDS = [
   { key: "maxIterationsPerTurn", label: "Max tool-call iterations per turn", type: "number" },
   { key: "logLevel", label: "Log level", type: "enum", options: ["debug", "info", "warn", "error"] },
   { key: "allowedWritePaths", label: "Allowed write paths (comma-separated)", type: "array" },
+  { key: "theme", label: "TUI color theme", type: "enum", options: ["default", "monochrome", "high-contrast"] },
+  { key: "vimKeybindings", label: "Vim-style keybindings in the TUI input box", type: "boolean" },
 ];

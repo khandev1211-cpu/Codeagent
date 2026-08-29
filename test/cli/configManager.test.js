@@ -6,6 +6,14 @@ import path from "node:path";
 import readline from "node:readline";
 import { ConfigManager } from "../../src/cli/configManager.js";
 import { loadConfig } from "../../src/config/loader.js";
+import { INTERACTIVE_CONFIG_FIELDS } from "../../src/config/setConfigValue.js";
+
+// "Done" is always the last menu entry: 1 (Provider & model) + every
+// INTERACTIVE_CONFIG_FIELDS entry + 1 (Done itself). Computed here rather
+// than hardcoded so adding a new settable field later doesn't silently
+// break every test in this file the way adding "theme"/"vimKeybindings"
+// did to an earlier, hardcoded version of these tests.
+const DONE = String(INTERACTIVE_CONFIG_FIELDS.length + 2);
 
 /**
  * Drip-feeds lines with a small delay between each, rather than pushing
@@ -55,7 +63,7 @@ describe("ConfigManager (interactive)", () => {
   it("changing an enum field (skillsIndexMode) persists the new value", async () => {
     homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-cm-"));
     seedConfig();
-    withFakeInput(["2", "full", String(10)]); // menu item 2, new value "full", then Done
+    withFakeInput(["2", "full", DONE]); // menu item 2, new value "full", then Done
 
     const manager = new ConfigManager({ homedir });
     await manager.run();
@@ -67,7 +75,7 @@ describe("ConfigManager (interactive)", () => {
   it("toggling a boolean field (planMode) via y/n persists true", async () => {
     homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-cm-"));
     seedConfig();
-    withFakeInput(["4", "y", "10"]); // menu item 4 = planMode, "y", Done
+    withFakeInput(["4", "y", DONE]); // menu item 4 = planMode, "y", Done
 
     const manager = new ConfigManager({ homedir });
     await manager.run();
@@ -79,7 +87,7 @@ describe("ConfigManager (interactive)", () => {
   it("an invalid value shows a warning and does not crash the loop — subsequent edits still work", async () => {
     homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-cm-"));
     seedConfig();
-    withFakeInput(["2", "nonsense", "2", "full", "10"]); // bad value, then retry with a good one
+    withFakeInput(["2", "nonsense", "2", "full", DONE]); // bad value, then retry with a good one
 
     const manager = new ConfigManager({ homedir });
     await manager.run();
@@ -91,7 +99,7 @@ describe("ConfigManager (interactive)", () => {
   it("an empty answer leaves the field unchanged", async () => {
     homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-cm-"));
     seedConfig();
-    withFakeInput(["7", "", "10"]); // menu item 7 = maxIterationsPerTurn, blank, Done
+    withFakeInput(["7", "", DONE]); // menu item 7 = maxIterationsPerTurn, blank, Done
 
     const manager = new ConfigManager({ homedir });
     await manager.run();
@@ -103,7 +111,7 @@ describe("ConfigManager (interactive)", () => {
   it("selecting 'Done' immediately exits without writing anything new", async () => {
     homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-cm-"));
     seedConfig();
-    withFakeInput(["10"]);
+    withFakeInput([DONE]);
 
     const manager = new ConfigManager({ homedir });
     await expect(manager.run()).resolves.toBeUndefined();
@@ -112,7 +120,7 @@ describe("ConfigManager (interactive)", () => {
   it("an out-of-range menu number re-prompts (shows the menu again) rather than crashing or silently hanging", async () => {
     homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-cm-"));
     seedConfig();
-    withFakeInput(["999", "10"]); // out-of-range, then Done on the re-prompt
+    withFakeInput(["999", DONE]); // out-of-range, then Done on the re-prompt
 
     const manager = new ConfigManager({ homedir });
     await expect(manager.run()).resolves.toBeUndefined();
@@ -121,7 +129,7 @@ describe("ConfigManager (interactive)", () => {
   it("array field (allowedWritePaths) accepts a comma-separated value", async () => {
     homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-cm-"));
     seedConfig();
-    withFakeInput(["9", "., ../shared", "10"]); // menu item 9 = allowedWritePaths
+    withFakeInput(["9", "., ../shared", DONE]); // menu item 9 = allowedWritePaths
 
     const manager = new ConfigManager({ homedir });
     await manager.run();

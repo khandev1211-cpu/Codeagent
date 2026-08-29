@@ -4,6 +4,7 @@ import { h } from "./h.js";
 import { StatusHeader } from "./StatusHeader.js";
 import { SessionLog } from "./SessionLog.js";
 import { InputBox } from "./InputBox.js";
+import { getTheme } from "./theme.js";
 import { ModelSwitcher } from "./ModelSwitcher.js";
 import { Orchestrator } from "../../agent/orchestrator.js";
 import { ContextManager, buildProjectContext } from "../../agent/context.js";
@@ -50,6 +51,7 @@ export function App({
   const [working, setWorking] = useState(false);
   const [activeConfig, setActiveConfig] = useState({ provider: config.provider, model: config.model });
   const [planMode, setPlanMode] = useState(Boolean(config.planMode));
+  const theme = useMemo(() => getTheme(config.theme), [config.theme]);
 
   const confirm = useMemo(() => createConfirmer({ config, logger }), []);
   const contextManagerRef = useRef(new ContextManager({ provider }));
@@ -254,6 +256,7 @@ export function App({
       skillsCount: skillRegistry.list().length,
       rulesCount: permissionRules.length,
       cwd,
+      theme,
     }),
     switcherOpen
       ? h(ModelSwitcher, {
@@ -264,8 +267,8 @@ export function App({
       : h(
           Box,
           { flexDirection: "column" },
-          h(SessionLog, { entries }),
-          h(InputBox, { value: inputValue, onChange: setInputValue, onSubmit: handleSubmit, disabled: working })
+          h(SessionLog, { entries, theme }),
+          h(InputBox, { value: inputValue, onChange: setInputValue, onSubmit: handleSubmit, disabled: working, vimKeybindings: Boolean(config.vimKeybindings) })
         )
   );
 }

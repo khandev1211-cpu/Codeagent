@@ -6,6 +6,9 @@
   "bin": {
     "codeagent": "./bin/cli.js"
   },
+  "exports": {
+    "./sdk": "./src/sdk/index.js"
+  },
   "engines": {
     "node": ">=22.0.0"
   },

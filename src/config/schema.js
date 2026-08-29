@@ -70,6 +70,13 @@ export const ConfigSchema = z.object({
   // an availability gap (e.g. Windows, or Linux without bwrap installed)
   // into a hard failure for an existing, already-shipped tool.
   sandboxMode: z.enum(["auto", "off"]).default("auto"),
+  // TUI-only cosmetic settings (docs/28) — ignored entirely by the
+  // one-shot CLI and plain REPL, which don't render colors or a modal
+  // input at all. "default" preserves the exact palette the TUI shipped
+  // with before theming existed, so this is a purely additive, opt-in
+  // pair of fields.
+  theme: z.enum(["default", "monochrome", "high-contrast"]).default("default"),
+  vimKeybindings: z.boolean().default(false),
 });
 
 export function getDefaults() {

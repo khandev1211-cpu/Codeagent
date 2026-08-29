@@ -25,7 +25,7 @@
 
 Unlike chat-based coding assistants that only print code blocks for you to manually copy, codeagent **acts directly** on your codebase: reading, writing, editing files, searching across your project, and executing shell commands — all driven by an LLM that decides which tools to call and when.
 
-The project's direction is a self-hosted, provider-agnostic agent with the same shape as Claude Code: agent loop, tool set, Hooks, Skills, Subagents, fine-grained permission rules, Plan Mode, sandboxing, Memory, Slash Commands, and an MCP client all shipped — a **Plugin** system is what's still ahead, then Tier 2 polish (usage tracking, interactive config, TUI theming, an SDK). See [Roadmap](#roadmap) below for what's shipped versus what's planned.
+The project's direction is a self-hosted, provider-agnostic agent with the same shape as Claude Code: agent loop, tool set, Hooks, Skills, Subagents, fine-grained permission rules, Plan Mode, sandboxing, Memory, Slash Commands, an MCP client, usage tracking, an interactive config manager, TUI theming, and an embeddable SDK all shipped — a **Plugin** system (bundling Skills+Subagents+Hooks+MCP for distribution) is the one item still ahead. See [Roadmap](#roadmap) below for what's shipped versus what's planned.
 
 ---
 
@@ -67,8 +67,8 @@ Where codeagent is headed, and honestly, what's real today versus what's still d
 | **Plugins** (bundle Skills+Subagents+Hooks+MCP, install from GitHub/npm/local path) | 🚧 Planned | Deliberately last — in real Claude Code a plugin is a packaging format over the four items above, so building it first would ship an empty container. Now unblocked (Skills/Subagents/Hooks/MCP all shipped). |
 | **Usage/cost tracking** | ✅ Shipped (v1) | `codeagent usage` (`--today`/`--week`/`--all`, default this month) and `codeagent quota`/`codeagent quota set <provider> <limitUSD>`. Global JSONL log (`~/.codeagent/usage/`, same actual storage shape `SessionStore` uses), advisory-only quotas — nothing blocks a request, a breach only produces a message after the fact. Cost is an explicit estimate: a hardcoded pricing table with a visible "as of" date, `null` (unpriced, e.g. most `openrouter` models) kept distinct from `0` (genuinely free, `ollama`). See `docs/26`. |
 | Interactive config manager | ✅ Shipped (v1) | `codeagent config --interactive`/`-i` (guided menu, reuses `SetupWizard` for provider/model), `codeagent config set <key> <value>` (scriptable), `codeagent config validate` (reports which field failed, if any). One shared `setConfigValue()` path for both the menu and `set` — not two implementations that could drift. Building `validate` surfaced and fixed a real pre-existing crash in first-run detection on a corrupted config file. See `docs/27`. |
-| TUI statusline theming, vim keybindings | 🚧 Planned (Tier 2) | Cosmetic; no other item depends on it. See `PLAN.md` Phase 9.3. |
-| Agent SDK equivalent (codeagent-as-a-library) | 🚧 Planned (Tier 2) | Deliberately last of all — only worth freezing a public API now that the core loop + Skills/Subagents/Hooks/MCP are stable enough to commit to long-term. See `PLAN.md` Phase 9.4. |
+| TUI theming & vim keybindings | ✅ Shipped (v1) | `config.theme` (`default`/`monochrome`/`high-contrast`, one shared semantic palette `StatusHeader`/`SessionLog` read from). `config.vimKeybindings` — an opt-in genuine subset of vim (not full emulation) for the TUI's input box: `i`/`a`/`I`/`A`/`h`/`l`/`0`/`$`/`x`/`dd`, Enter always submits regardless of mode. Both purely additive — defaults preserve the exact original TUI experience for anyone not opting in. See `docs/28`. |
+| Agent SDK equivalent (codeagent-as-a-library) | ✅ Shipped (v1) | `import { Orchestrator, ToolRegistry, createDefaultRegistry, ... } from "codeagent/sdk"` — a curated, individually-audited export surface, not a blanket re-export of `src/`. `package.json`'s `exports` field defines only the `./sdk` subpath; a bare `import "codeagent"` is a hard, unambiguous error. `SDK_VERSION` stability contract (independent of the package's own version — breaking the exported surface needs a major bump, documented before it ships). Verified with a real `npm pack` → install → import round trip into a throwaway consumer project (not just relative-path imports), including a full `Orchestrator.runTurn()` executed entirely through the packaged SDK. See `docs/29`. |
 
 Enterprise/hosted infrastructure (Bedrock/Vertex/Foundry routing, gateways, admin console, Slack/VS Code/JetBrains first-party extensions, hosted cloud execution, agent teams, remote control, computer use) is an explicit non-goal for this project — see `docs/16` for the reasoning.
 
@@ -378,6 +378,8 @@ Full architecture and design docs live in [`docs/`](./docs):
 | [25 — MCP Client](./docs/25-mcp.md) | External tool servers, `.codeagent/mcp.json`, safety/naming/trust design |
 | [26 — Usage Tracking](./docs/26-usage-tracking.md) | `codeagent usage`/`codeagent quota`, cost estimation, advisory quotas |
 | [27 — Interactive Config Manager](./docs/27-config-manager.md) | `codeagent config -i`/`set`/`validate`, shared validation path |
+| [28 — TUI Polish](./docs/28-tui-polish.md) | Theming (`config.theme`), vim keybindings (`config.vimKeybindings`) |
+| [29 — Agent SDK](./docs/29-agent-sdk.md) | `codeagent/sdk` subpath, curated surface, stability contract |
 
 ---
 

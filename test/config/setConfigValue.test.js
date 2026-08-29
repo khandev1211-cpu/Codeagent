@@ -117,6 +117,8 @@ describe("INTERACTIVE_CONFIG_FIELDS", () => {
       maxIterationsPerTurn: "25",
       logLevel: "info",
       allowedWritePaths: ".",
+      theme: "default",
+      vimKeybindings: "false",
     };
     for (const field of INTERACTIVE_CONFIG_FIELDS) {
       expect(() => coerceConfigValue(field.key, sampleValues[field.key])).not.toThrow();
