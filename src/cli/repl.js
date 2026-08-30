@@ -26,7 +26,6 @@ export async function startRepl({
   permissionRules = [],
   usageTracker,
 }) {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const confirm = createConfirmer({ config, logger });
   const contextManager = new ContextManager({ provider });
   const skillRegistry = new SkillRegistry({ cwd, logger });
@@ -52,6 +51,20 @@ export async function startRepl({
   const memory = formatMemoryForPrompt(await loadMemory({ cwd }));
   const commandRegistry = new SlashCommandRegistry({ cwd, logger });
 
+  // Created only now, immediately before the loop starts asking
+  // questions — NOT at the top of this function. `readline.createInterface`
+  // starts actively consuming `process.stdin` the moment it's constructed;
+  // every `await` above (MCP connection, project context, memory files)
+  // takes real time, and piped/non-TTY input (a test harness, CI, someone
+  // scripting `echo "..." | codeagent`) can arrive and be silently
+  // consumed by the interface during that window, before any
+  // `rl.question()` call is pending to actually receive it — losing the
+  // first line entirely. Real interactive typing at a TTY never triggers
+  // this (a human can't type faster than the setup above completes), so
+  // it went unnoticed until a fresh, from-scratch run through this exact
+  // scenario surfaced it.
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
   renderText(`codeagent session ${session.id} — ${session.provider}/${session.model}`);
   renderText("Type your request, or Ctrl+C to exit.\n");
 
@@ -60,23 +73,40 @@ export async function startRepl({
     interrupted = true;
   });
 
-  while (true) {
-    let userInput;
-    try {
-      userInput = await rl.question("> ");
-    } catch {
-      break; // stdin closed
+  rl.setPrompt("> ");
+  rl.prompt();
+
+  // `for await...of rl` (Node's documented async-iterator pattern for
+  // readline), not a `while(true) { await rl.question(...) }` loop — the
+  // latter has a genuine, reproducible limitation with fully-buffered,
+  // immediately-closing piped input (verified directly against a
+  // minimal readline/promises repro): only the FIRST line ever gets
+  // delivered through nested `question()` calls; a second `question()`
+  // call made after the stream has already ended never resolves or
+  // rejects at all. `for await` is driven by the interface's 'line'
+  // events directly and correctly delivers every already-buffered line
+  // regardless of that timing. `rl.prompt()` (not `question()`'s
+  // built-in prompt display) shows the "> " text now, called once before
+  // the loop and again after every iteration — the trade-off for
+  // switching mechanisms is that prompt display is no longer automatic,
+  // so every exit point in the loop body below explicitly re-prompts.
+  for await (const rawInput of rl) {
+    let userInput = rawInput;
+    if (!userInput.trim()) {
+      rl.prompt();
+      continue;
     }
-    if (!userInput.trim()) continue;
 
     const slashAction = resolveSlashCommand(userInput, { commandRegistry });
     if (slashAction.type === "help") {
       renderText(`\n${formatHelp(commandRegistry)}\n`);
+      rl.prompt();
       continue;
     }
     if (slashAction.type === "clear") {
       session.messages = [];
       renderText("Conversation history cleared.\n");
+      rl.prompt();
       continue;
     }
     if (slashAction.type === "plan-toggle") {
@@ -88,10 +118,12 @@ export async function startRepl({
       // recognition existed.
       config.planMode = !config.planMode;
       renderText(`Plan Mode ${config.planMode ? "enabled — destructive tools will describe, not execute" : "disabled"}.\n`);
+      rl.prompt();
       continue;
     }
     if (slashAction.type === "unknown") {
       renderText(`Unknown command: /${slashAction.name}. Try /help.\n`);
+      rl.prompt();
       continue;
     }
     if (slashAction.type === "prompt") {
@@ -151,6 +183,7 @@ export async function startRepl({
     }
 
     if (interrupted) break;
+    rl.prompt();
   }
 
   rl.close();

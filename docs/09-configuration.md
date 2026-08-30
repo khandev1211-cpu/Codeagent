@@ -37,11 +37,20 @@ const ConfigSchema = z.object({
   yolo: z.boolean().default(false),
   allowedWritePaths: z.array(z.string()).default(["."]), // relative to project root
   planningEnabled: z.boolean().default(false),
+  planMode: z.boolean().default(false), // doc 20 — read-only whole-session mode, toggleable in-REPL via /plan (doc 24)
+  logLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
   customSystemPromptAddendum: z.string().optional(),
+  adminSystemPrompt: z.string().optional(), // doc 18
+  skillsIndexMode: z.enum(["compact", "full"]).default("compact"), // doc 19
+  sandboxMode: z.enum(["auto", "off"]).default("auto"), // doc 15 — run_bash write confinement
+  theme: z.enum(["default", "monochrome", "high-contrast"]).default("default"), // doc 28, TUI only
+  vimKeybindings: z.boolean().default(false), // doc 28, TUI only
 });
 ```
 
-Validation failure produces a clear, specific error message (which field, what was wrong) at boot, before any API calls happen — not a cryptic downstream failure mid-session.
+This list has grown considerably since Tier 1/Tier 2 shipped (`docs/16`'s roadmap) — `src/config/schema.js` is the actual source of truth if this doc and the real file ever disagree; every field above should also appear in `codeagent config`'s output and, for the ones meant to be user-editable, in `INTERACTIVE_CONFIG_FIELDS` (`src/config/setConfigValue.js`, doc 27).
+
+Validation failure produces a clear, specific error message (which field, what was wrong) at boot, before any API calls happen — not a cryptic downstream failure mid-session. `codeagent config validate` (doc 27) runs this same validation on demand, for checking a hand-edited config file without needing to run an actual command.
 
 ## API key sourcing
 
@@ -51,6 +60,10 @@ Validation failure produces a clear, specific error message (which field, what w
 ## Multi-provider config and the admin system prompt
 
 `ConfigSchema` also carries a `providers` map (every provider ever configured via `codeagent setup`, not just the active one) and an optional `adminSystemPrompt` (a global, priority-layered standing instruction). These are additive to the schema above and don't change how `provider`/`model`/`apiKeyEnvVar` resolve — full detail in doc 18, since they're really about the setup/provider-management story, not the config-loading mechanics this doc owns.
+
+## Editing config
+
+Three ways in, all reaching the same validation (doc 27 has the full design): `codeagent config set <key> <value>` (scriptable), `codeagent config --interactive`/`-i` (guided menu), or hand-editing `~/.codeagentrc`/`.codeagent/config.json` directly and running `codeagent config validate` afterward. `provider`/`model`/`apiKeyEnvVar`/`providers`/`adminSystemPrompt` are the exception — those have their own dedicated commands (`codeagent use`, `codeagent setup`, `codeagent system-prompt set`) and `config set`/the interactive menu redirect to those instead of offering a second path to the same state.
 
 ## Project vs. global config — what belongs where
 

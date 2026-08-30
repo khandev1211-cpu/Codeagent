@@ -1,6 +1,6 @@
 # codeagent — Documentation Index
 
-This is the full documentation set for **codeagent**, a terminal-native AI coding agent distributed as an npm package. Twenty-one documents, each owning one concern so nothing is duplicated across files.
+This is the full documentation set for **codeagent**, a terminal-native AI coding agent distributed as an npm package. Twenty-nine documents, each owning one concern so nothing is duplicated across files.
 
 | # | Document | Covers |
 |---|---|---|
@@ -22,14 +22,24 @@ This is the full documentation set for **codeagent**, a terminal-native AI codin
 | 16 | [Claude Code Parity Audit](./16-claude-code-parity-audit.md) | Feature-by-feature audit vs. current Claude Code; drives PLAN.md's phase order |
 | 17 | [Hooks](./17-hooks.md) | Lifecycle event system — PreToolUse/PostToolUse/SessionStart/SessionEnd, `.codeagent/hooks.json` |
 | 18 | [Provider Management & Admin Prompt](./18-provider-management-and-admin-prompt.md) | Multi-provider config, persisted setup, first-run detection, shared history across providers, admin system prompt |
-| 19 | [Skills](./19-skills.md) | `SKILL.md` discovery, progressive disclosure, `.codeagent/skills/` |
+| 19 | [Skills](./19-skills.md) | `SKILL.md` discovery, progressive disclosure, `.codeagent/skills/`, two-tier index |
 | 20 | [Permission Rules & Plan Mode](./20-permission-rules-and-plan-mode.md) | Fine-grained allow/deny rules, `--plan` read-only execution mode, precedence order with Hooks and Safety |
 | 21 | [Rich TUI](./21-rich-tui.md) | Ink-based interactive session — status header, mid-session model switcher, `Orchestrator.setProvider()` |
+| 22 | [Subagents](./22-subagents.md) | Scoped single-level task delegation, design writeup + implementation notes |
+| 23 | [Memory](./23-memory.md) | `AGENTS.md` project + personal instruction files, `CLAUDE.md`-equivalent |
+| 24 | [Slash Commands](./24-slash-commands.md) | Built-in + custom in-REPL commands, `$ARGUMENTS` substitution, `/plan` toggle |
+| 25 | [MCP Client](./25-mcp.md) | External tool servers, `.codeagent/mcp.json`, safety/naming/trust design |
+| 26 | [Usage Tracking](./26-usage-tracking.md) | `codeagent usage`/`codeagent quota`, cost estimation, advisory quotas |
+| 27 | [Interactive Config Manager](./27-config-manager.md) | `codeagent config -i`/`set`/`validate`, shared validation path |
+| 28 | [TUI Polish](./28-tui-polish.md) | Theming (`config.theme`), vim keybindings (`config.vimKeybindings`) |
+| 29 | [Agent SDK](./29-agent-sdk.md) | `codeagent/sdk` subpath, curated surface, stability contract |
 
 ## How to use this set
 
 - **Building the project for the first time?** Read 01 → 02 → 03 → 04, then implement tools per 05 in the build order given in doc 04.
 - **Adding a new tool or provider?** Read 11 first — it exists specifically so you don't need to touch the orchestrator.
+- **Extending the agent's capabilities** (Skills, Subagents, Slash Commands, MCP)? Read 19, 22, 24, 25 respectively — each follows the same discovery/registry/wiring pattern, so reading one makes the others faster to follow.
+- **Embedding codeagent in your own tool?** Read 29 — the CLI docs above describe *using* codeagent; 29 describes *embedding* it, a different audience.
 - **Preparing a release?** Read 12 and 13 in order.
 - **Onboarding a contributor?** Point them at 01, 02, and 14.
 
