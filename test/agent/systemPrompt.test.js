@@ -135,3 +135,39 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toMatch(/only if it's actually relevant/);
   });
 });
+
+describe("Autonomous Mode section (docs/31)", () => {
+  it("is omitted when autonomousMode is false or unset", () => {
+    expect(buildSystemPrompt({})).not.toMatch(/Autonomous Mode/);
+    expect(buildSystemPrompt({ autonomousMode: false })).not.toMatch(/Autonomous Mode/);
+  });
+
+  it("is included when autonomousMode is true", () => {
+    const prompt = buildSystemPrompt({ autonomousMode: true });
+    expect(prompt).toMatch(/Autonomous Mode/);
+  });
+
+  it("instructs self-verification before declaring the task done", () => {
+    const prompt = buildSystemPrompt({ autonomousMode: true });
+    expect(prompt.toLowerCase()).toMatch(/verify your own work/);
+  });
+
+  it("explicitly states sandboxing/write-path restrictions are unchanged, not lifted", () => {
+    const prompt = buildSystemPrompt({ autonomousMode: true });
+    expect(prompt).toMatch(/unchanged/);
+  });
+
+  it("is placed after the current plan section, when both are present", () => {
+    const prompt = buildSystemPrompt({ autonomousMode: true, plannerOutput: "1. Step one\n2. Step two" });
+    const planIdx = prompt.indexOf("Current plan");
+    const autonomousIdx = prompt.indexOf("Autonomous Mode");
+    expect(planIdx).toBeLessThan(autonomousIdx);
+  });
+
+  it("is placed before customAddendum, when both are present", () => {
+    const prompt = buildSystemPrompt({ autonomousMode: true, customAddendum: "ADDENDUM_MARKER" });
+    const autonomousIdx = prompt.indexOf("Autonomous Mode");
+    const addendumIdx = prompt.indexOf("ADDENDUM_MARKER");
+    expect(autonomousIdx).toBeLessThan(addendumIdx);
+  });
+});

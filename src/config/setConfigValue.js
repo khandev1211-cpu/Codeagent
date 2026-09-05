@@ -103,4 +103,5 @@ export const INTERACTIVE_CONFIG_FIELDS = [
   { key: "allowedWritePaths", label: "Allowed write paths (comma-separated)", type: "array" },
   { key: "theme", label: "TUI color theme", type: "enum", options: ["default", "monochrome", "high-contrast"] },
   { key: "vimKeybindings", label: "Vim-style keybindings in the TUI input box", type: "boolean" },
+  { key: "autonomousMode", label: "Autonomous Mode: mandatory planning, no confirmation prompts, self-verification (docs/31)", type: "boolean" },
 ];

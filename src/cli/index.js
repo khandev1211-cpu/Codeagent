@@ -32,6 +32,7 @@ import { SlashCommandRegistry, formatHelp } from "../agent/slashCommands.js";
 import { UsageTracker, recordTurnUsage, PRICING_AS_OF } from "../utils/usageTracker.js";
 import { setConfigValue } from "../config/setConfigValue.js";
 import { runConfigManager } from "./configManager.js";
+import { planTurn, shouldPlan } from "../agent/planner.js";
 import { loadPermissionRules } from "../safety/permissionRules.js";
 
 function buildCliConfigOverrides(opts) {
@@ -40,6 +41,18 @@ function buildCliConfigOverrides(opts) {
   if (opts.provider) overrides.provider = opts.provider;
   if (opts.yolo) overrides.yolo = true;
   if (opts.plan) overrides.planMode = true;
+  if (opts.autonomous) {
+    // --autonomous sets both flags for this invocation only (docs/31) —
+    // autonomousMode drives the planning/recitation/system-prompt
+    // behavior, yolo is what actually makes shouldBypassConfirmation()
+    // skip the prompt (src/safety/yolo.js already treats the two as
+    // equivalent triggers for that specific check, but CLI-flag-only
+    // autonomousMode without yolo would still work correctly there too —
+    // setting both here is belt-and-suspenders clarity, not a
+    // requirement of the underlying mechanism).
+    overrides.autonomousMode = true;
+    overrides.yolo = true;
+  }
   return overrides;
 }
 
@@ -76,14 +89,29 @@ async function oneShot(request, { config, logger, cwd }) {
 
   const projectContext = await buildProjectContext(cwd);
   const memory = formatMemoryForPrompt(await loadMemory({ cwd }));
+
+  // Wasn't wired into the one-shot path at all before Autonomous Mode
+  // (docs/31) — repl.js and the TUI already had this, one-shot didn't.
+  // Autonomous Mode makes planning mandatory (shouldPlan() returns true
+  // whenever config.autonomousMode is set), so without this, `codeagent
+  // --autonomous "<request>"` would silently skip planning/recitation
+  // entirely for the one invocation style most likely to actually use
+  // the flag (a single, unattended, hands-off run).
+  let plannerOutput = null;
+  if (shouldPlan({ config, userRequest: request })) {
+    plannerOutput = await planTurn({ provider, userRequest: request });
+  }
+
   const system = buildSystemPrompt({
     projectContext,
+    plannerOutput,
     customAddendum: config.customSystemPromptAddendum,
     adminPrompt: config.adminSystemPrompt,
     memory,
     skillsIndex,
     skillsIndexMode,
     subagentsIndex,
+    autonomousMode: Boolean(config.autonomousMode),
   });
 
   await hookRegistry.run(HOOK_EVENTS.SESSION_START, { sessionId: session.id, cwd });
@@ -94,6 +122,7 @@ async function oneShot(request, { config, logger, cwd }) {
       userInput: request,
       system,
       cwd,
+      plan: plannerOutput,
       onEvent: (event) => {
         if (event.type === "tool_call") renderToolCall(event.tool, event.input);
         if (event.type === "tool_declined") {
@@ -482,6 +511,7 @@ export async function run(argv) {
     .option("--resume <id>", "Resume a saved session ('last' for most recent)")
     .option("--yolo", "Skip destructive-action confirmations for this run")
     .option("--plan", "Plan mode: describe destructive actions instead of performing them (docs/20)")
+    .option("--autonomous", "Manus-inspired workflow: mandatory planning, plan recitation on long turns, self-verification before finishing, no confirmation prompts (implies --yolo). Sandboxing and allowedWritePaths are unchanged (docs/31)")
     .option("--model <name>", "Override the configured model")
     .option("--provider <name>", "Override the configured provider");
 

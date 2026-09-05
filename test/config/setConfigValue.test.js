@@ -119,6 +119,7 @@ describe("INTERACTIVE_CONFIG_FIELDS", () => {
       allowedWritePaths: ".",
       theme: "default",
       vimKeybindings: "false",
+      autonomousMode: "false",
     };
     for (const field of INTERACTIVE_CONFIG_FIELDS) {
       expect(() => coerceConfigValue(field.key, sampleValues[field.key])).not.toThrow();

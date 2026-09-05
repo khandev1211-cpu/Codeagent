@@ -112,9 +112,20 @@ export class KeychainManager {
         stdio: ["pipe", "pipe", "pipe"],
         windowsHide: true,
       }).trim();
-      return result || null;
+      return result || this._getKeyLocal(provider);
     } catch {
-      return null;
+      // Falls through to local storage here directly, not by re-throwing
+      // for getKey()'s own outer catch to handle — that outer catch
+      // exists (and correctly calls _getKeyLocal itself), but relying on
+      // it silently broke this exact fallback: this method previously
+      // returned null on failure instead of throwing, so the outer
+      // catch's fallback logic never ran at all. `Get-StoredCredential`
+      // needs the CredentialManager PowerShell module, which frequently
+      // isn't installed — meaning a key saved via `codeagent setup` (or
+      // that already fell back to local storage at save time) could
+      // never be read back. Matches _getKeyLinux's existing pattern,
+      // which already falls through correctly.
+      return this._getKeyLocal(provider);
     }
   }
 
@@ -157,9 +168,16 @@ export class KeychainManager {
         ["find-generic-password", "-s", service, "-a", account, "-w"],
         { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
       ).trim();
-      return result || null;
+      return result || this._getKeyLocal(provider);
     } catch {
-      return null;
+      // Same defect pattern the Windows getter had, found while fixing
+      // that one (not itself reported): `security` can fail for reasons
+      // other than "no key stored" — keychain locked, no login keychain
+      // in a headless/CI/sandboxed context — and this used to swallow
+      // that and return null directly, bypassing local-storage fallback
+      // the exact same way the Windows bug did. Matches _getKeyLinux's
+      // existing (correct) pattern.
+      return this._getKeyLocal(provider);
     }
   }
 

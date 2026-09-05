@@ -4,6 +4,7 @@ import { describePlannedAction } from "../safety/planMode.js";
 import { LimitExceededError, ToolError } from "../utils/errors.js";
 import { HOOK_EVENTS, NULL_HOOK_REGISTRY, logHookBlock } from "../hooks/index.js";
 import { buildRestrictedToolRegistry, buildSubagentSystemPrompt } from "./subagent.js";
+import { buildRecitationMessage, RECITATION_INTERVAL } from "./planner.js";
 
 /**
  * Runs one user turn to completion: send -> tool_use -> execute -> tool_result
@@ -110,7 +111,7 @@ export class Orchestrator {
     return { finalText, iterations: result.iterations, usage: result.usage };
   }
 
-  async runTurn({ messages, userInput, system, cwd, onEvent = () => {} }) {
+  async runTurn({ messages, userInput, system, cwd, plan = null, onEvent = () => {} }) {
     const history = [...messages, { role: "user", content: userInput }];
     let iterations = 0;
     let totalInputTokens = 0;
@@ -122,6 +123,15 @@ export class Orchestrator {
           `Hit max iterations per turn (${this.config.maxIterationsPerTurn}). Session is saved; you can raise the limit in config or resume.`,
           { limit: this.config.maxIterationsPerTurn, current: iterations }
         );
+      }
+
+      // Autonomous Mode only (docs/31) — re-inject the plan as a plain
+      // conversation message every RECITATION_INTERVAL iterations, so a
+      // genuinely long tool-use loop doesn't drift from the original
+      // goal ("lost in the middle"). Skipped on iteration 0 (nothing to
+      // recite yet) and whenever no plan was produced for this turn.
+      if (this.config.autonomousMode && plan && iterations > 0 && iterations % RECITATION_INTERVAL === 0) {
+        history.push(buildRecitationMessage(plan));
       }
 
       const compacted = this.contextManager

@@ -190,6 +190,7 @@ export function App({
         skillsIndex: skillsIndexMode === "compact" ? skillRegistry.formatCompactIndexForPrompt() : skillRegistry.formatIndexForPrompt(),
         skillsIndexMode,
         subagentsIndex: subagentRegistry?.formatIndexForPrompt(),
+        autonomousMode: Boolean(config.autonomousMode),
       });
 
       const result = await orchestratorRef.current.runTurn({
@@ -197,6 +198,7 @@ export function App({
         userInput,
         system,
         cwd,
+        plan: plannerOutput,
         onEvent: (event) => {
           if (event.type === "tool_call") {
             appendEntry({ type: "tool_call", tool: event.tool, detail: summarizeInput(event.input) });

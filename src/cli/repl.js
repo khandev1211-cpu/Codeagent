@@ -145,6 +145,7 @@ export async function startRepl({
       skillsIndex,
       skillsIndexMode,
       subagentsIndex,
+      autonomousMode: Boolean(config.autonomousMode),
     });
 
     try {
@@ -153,6 +154,7 @@ export async function startRepl({
         userInput,
         system,
         cwd,
+        plan: plannerOutput,
         onEvent: (event) => {
           if (event.type === "tool_call") renderToolCall(event.tool, event.input);
           if (event.type === "tool_declined") renderToolDeclined(event.tool, event.reason);

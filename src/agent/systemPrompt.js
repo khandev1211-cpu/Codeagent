@@ -62,6 +62,28 @@ function renderProjectContext({ tree, manifest, readme }) {
  * an index only, never full skill content), then everything project-
  * specific.
  */
+/**
+ * Autonomous Mode only (docs/31) — instruction-only, no new tool or
+ * code-level enforcement, same category as the admin prompt/memory
+ * sections above: guidance the model is told to take seriously, not a
+ * gate. Placed right after the current plan, when one exists, so the
+ * "verify before finishing" instruction reads naturally as the last
+ * step of the plan just shown.
+ */
+function renderAutonomousMode() {
+  return `## Autonomous Mode\nYou are operating without step-by-step confirmation — destructive actions are pre-approved for this session, but the same safety mechanisms underneath (sandboxing, write-path restrictions, hooks) are unchanged and still apply. Because there's no one confirming each step as you go:\n- Work through your plan yourself; don't stop to ask the user clarifying questions unless you are genuinely blocked (e.g. missing credentials, an ambiguous requirement with materially different implementations).\n- Before declaring the task done, verify your own work: run the test suite if one exists, run linting if configured, actually execute what you built rather than assuming it works.\n- End with one clear summary: what you built, what you verified, and how the user can check it themselves — not a play-by-play of every step.`;
+}
+
+/**
+ * Concatenated in a fixed order so the prompt is deterministic given the
+ * same project + config, modulo the genuinely dynamic parts (project tree,
+ * planner output) (doc 04). Order matters here: base conventions first
+ * (the agent needs to know how to use its tools before anything else),
+ * then the admin's standing instructions (docs/18 — global, priority, but
+ * not a full replacement), then what capabilities exist (skills — docs/19,
+ * an index only, never full skill content), then everything project-
+ * specific.
+ */
 export function buildSystemPrompt({
   projectContext,
   plannerOutput,
@@ -71,6 +93,7 @@ export function buildSystemPrompt({
   skillsIndex,
   skillsIndexMode = "full",
   subagentsIndex,
+  autonomousMode = false,
 }) {
   const parts = [BASE_TEMPLATE];
   if (adminPrompt) parts.push(renderAdminPrompt(adminPrompt));
@@ -79,6 +102,7 @@ export function buildSystemPrompt({
   if (subagentsIndex) parts.push(renderSubagentsIndex(subagentsIndex));
   if (projectContext) parts.push(renderProjectContext(projectContext));
   if (plannerOutput) parts.push(`## Current plan\n${plannerOutput}`);
+  if (autonomousMode) parts.push(renderAutonomousMode());
   if (customAddendum) parts.push(`## Additional instructions\n${customAddendum}`);
   return parts.join("\n\n");
 }

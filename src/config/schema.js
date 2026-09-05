@@ -77,6 +77,13 @@ export const ConfigSchema = z.object({
   // pair of fields.
   theme: z.enum(["default", "monochrome", "high-contrast"]).default("default"),
   vimKeybindings: z.boolean().default(false),
+  // Manus-inspired workflow mode (docs/31) — auto-approves destructive
+  // calls (same underlying mechanism as `yolo`, not a second bypass path)
+  // AND makes planning mandatory + recites the plan periodically on long
+  // turns. Deliberately does NOT touch sandboxMode/allowedWritePaths —
+  // those stay exactly as strict as they already are regardless of this
+  // flag.
+  autonomousMode: z.boolean().default(false),
 });
 
 export function getDefaults() {

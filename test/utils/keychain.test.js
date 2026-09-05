@@ -133,3 +133,98 @@ describe("KeychainManager shell-injection fix (call-shape verification)", () => 
     vi.resetModules();
   });
 });
+
+/**
+ * Regression coverage for a real bug found via an independent Windows
+ * environment audit (docs/14): `_getKeyWindows` (and, on inspection while
+ * fixing it, `_getKeyMacOS` — the same defect pattern, not itself
+ * reported) caught a failed platform credential-store command and
+ * returned `null` directly, rather than falling through to the local
+ * JSON fallback the way `_getKeyLinux` already correctly did and the way
+ * every platform's *save* path already does on failure. Concretely: a
+ * key that had fallen back to local storage at save time (because the
+ * platform credential store failed then too) could never be read back,
+ * because the read path's own fallback never ran — `Get-StoredCredential`
+ * commonly fails simply because the CredentialManager PowerShell module
+ * isn't installed, which is a very ordinary environment, not an edge
+ * case.
+ */
+describe("KeychainManager get-path local fallback (regression)", () => {
+  it("Windows: falls through to local storage when the platform credential command fails", async () => {
+    vi.resetModules();
+    vi.doMock("child_process", () => ({
+      execFileSync: vi.fn((file) => {
+        if (file === "powershell") {
+          // Simulates Get-StoredCredential failing — e.g. the
+          // CredentialManager module isn't installed. Before the fix,
+          // _getKeyWindows swallowed this and returned null directly,
+          // never reaching local storage at all.
+          throw new Error("Get-StoredCredential: module not found");
+        }
+        return "";
+      }),
+    }));
+    const { KeychainManager: MockedKeychainManager } = await import("../../src/utils/keychain.js");
+    const testManager = new MockedKeychainManager({ logger: { warn: () => {}, debug: () => {} } });
+    testManager.platform = "win32";
+
+    // Seed local storage directly — bypassing saveKey entirely, so this
+    // test only exercises the GET path's fallback behavior, not save's.
+    testManager._saveKeyLocal(TEST_PROVIDER, "sk-from-local-fallback");
+
+    const key = await testManager.getKey(TEST_PROVIDER);
+    expect(key).toBe("sk-from-local-fallback");
+
+    testManager._deleteKeyLocal(TEST_PROVIDER);
+    vi.doUnmock("child_process");
+    vi.resetModules();
+  });
+
+  it("macOS: falls through to local storage when `security` fails for a reason other than 'not found'", async () => {
+    vi.resetModules();
+    vi.doMock("child_process", () => ({
+      execFileSync: vi.fn((file, args) => {
+        if (file === "security" && args.includes("find-generic-password")) {
+          // Simulates e.g. a locked keychain or no login keychain in a
+          // headless/CI context — not "item not found," which is the
+          // failure mode `security` is expected to hit routinely and
+          // where returning null (no local key exists either) is
+          // already correct either way.
+          throw new Error("security: SecKeychainSearchCopyNext: The specified item could not be found in the keychain, or keychain is locked.");
+        }
+        return "";
+      }),
+    }));
+    const { KeychainManager: MockedKeychainManager } = await import("../../src/utils/keychain.js");
+    const testManager = new MockedKeychainManager({ logger: { warn: () => {}, debug: () => {} } });
+    testManager.platform = "darwin";
+
+    testManager._saveKeyLocal(TEST_PROVIDER, "sk-from-local-fallback-macos");
+
+    const key = await testManager.getKey(TEST_PROVIDER);
+    expect(key).toBe("sk-from-local-fallback-macos");
+
+    testManager._deleteKeyLocal(TEST_PROVIDER);
+    vi.doUnmock("child_process");
+    vi.resetModules();
+  });
+
+  it("Windows: still correctly returns null (not a crash) when neither the platform store nor local storage has the key", async () => {
+    vi.resetModules();
+    vi.doMock("child_process", () => ({
+      execFileSync: vi.fn((file) => {
+        if (file === "powershell") throw new Error("not found");
+        return "";
+      }),
+    }));
+    const { KeychainManager: MockedKeychainManager } = await import("../../src/utils/keychain.js");
+    const testManager = new MockedKeychainManager({ logger: { warn: () => {}, debug: () => {} } });
+    testManager.platform = "win32";
+
+    const key = await testManager.getKey("codeagent-truly-never-configured");
+    expect(key).toBeNull();
+
+    vi.doUnmock("child_process");
+    vi.resetModules();
+  });
+});
