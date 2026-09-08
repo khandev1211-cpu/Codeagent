@@ -33,6 +33,8 @@ import { UsageTracker, recordTurnUsage, PRICING_AS_OF } from "../utils/usageTrac
 import { setConfigValue } from "../config/setConfigValue.js";
 import { runConfigManager } from "./configManager.js";
 import { planTurn, shouldPlan } from "../agent/planner.js";
+import readline from "node:readline/promises";
+import { isFolderTrusted, trustFolder, revokeFolder, revokeAllFolders, listTrustedFolders, TRUST_EXEMPT_COMMANDS } from "../safety/folderTrust.js";
 import { loadPermissionRules } from "../safety/permissionRules.js";
 
 function buildCliConfigOverrides(opts) {
@@ -477,6 +479,55 @@ export function shouldRunFirstTimeSetup(argv, { homedir } = {}) {
   if (isExplicitSetupCommand || isHelpOrVersion) return false;
   return !configExists({ homedir });
 }
+
+/**
+ * Mirrors shouldRunFirstTimeSetup's raw-argv-inspection approach (docs/30
+ * — the gate runs before commander has parsed anything, so there's
+ * nothing else to inspect yet). Any first non-flag token that names a
+ * TRUST_EXEMPT_COMMANDS entry is exempt; everything else — a genuine
+ * one-shot request string, no arguments at all (interactive mode), or an
+ * unrecognized token commander will treat as the `[request]` positional
+ * anyway — requires the gate.
+ *
+ * Flags that take a value (`--model <name>`, `--provider <name>`,
+ * `--resume <id>`) need their value skipped too, not just the flag
+ * itself — otherwise `--model gpt-5 config` would misread "gpt-5" (which
+ * doesn't start with "-") as the command name instead of "config".
+ */
+const VALUE_TAKING_FLAGS = new Set(["--model", "--provider", "--resume"]);
+
+export function shouldRequireFolderTrust(argv) {
+  const args = argv.slice(2);
+  if (args.some((a) => ["--help", "-h", "--version", "-V"].includes(a))) return false;
+
+  let firstArg;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i].startsWith("-")) {
+      if (VALUE_TAKING_FLAGS.has(args[i])) i++; // skip this flag's value too
+      continue;
+    }
+    firstArg = args[i];
+    break;
+  }
+
+  if (firstArg && TRUST_EXEMPT_COMMANDS.has(firstArg)) return false;
+  return true;
+}
+
+async function promptFolderTrust(cwd) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    renderText(`This folder hasn't been used with codeagent before:\n  ${cwd}\n`);
+    renderText(
+      "codeagent will be able to read files here, and — after your explicit confirmation on each destructive action (see --yolo) — write files and run shell commands within it.\n"
+    );
+    const answer = await rl.question("Trust this folder and continue? (y/n): ");
+    return answer.trim().toLowerCase() === "y";
+  } finally {
+    rl.close();
+  }
+}
+
 export async function run(argv) {
   if (shouldRunFirstTimeSetup(argv)) {
     const cwd = process.cwd();
@@ -503,6 +554,27 @@ export async function run(argv) {
     renderText("\nContinuing with your original command...\n");
   }
 
+  // The outermost gate (docs/30) — runs before Skills/Subagents/Hooks/MCP
+  // discovery, before any tool registry exists, before a single project
+  // file is read. `--trust` (checked directly against raw argv, same as
+  // shouldRunFirstTimeSetup's approach — commander hasn't parsed
+  // anything yet at this point) auto-trusts without prompting, for
+  // CI/scripts/Docker.
+  if (shouldRequireFolderTrust(argv)) {
+    const cwd = process.cwd();
+    const alreadyTrusted = await isFolderTrusted(cwd);
+    if (!alreadyTrusted) {
+      const autoTrust = argv.slice(2).includes("--trust");
+      const trusted = autoTrust || (await promptFolderTrust(cwd));
+      if (!trusted) {
+        renderText("\nOkay — not working in this folder. Use --trust next time to skip this prompt (e.g. in CI/scripts).\n");
+        return;
+      }
+      await trustFolder(cwd);
+    }
+  }
+
+
   const program = new Command();
   program
     .name("codeagent")
@@ -512,6 +584,7 @@ export async function run(argv) {
     .option("--yolo", "Skip destructive-action confirmations for this run")
     .option("--plan", "Plan mode: describe destructive actions instead of performing them (docs/20)")
     .option("--autonomous", "Manus-inspired workflow: mandatory planning, plan recitation on long turns, self-verification before finishing, no confirmation prompts (implies --yolo). Sandboxing and allowedWritePaths are unchanged (docs/31)")
+    .option("--trust", "Trust the current folder for codeagent, without the first-time confirmation prompt (for CI/scripts/Docker; docs/30)")
     .option("--model <name>", "Override the configured model")
     .option("--provider <name>", "Override the configured provider");
 
@@ -615,6 +688,38 @@ export async function run(argv) {
     .description("Connect to configured MCP servers (.codeagent/mcp.json) and list the tools they contribute")
     .action(async () => {
       await mcpCommand({ cwd: process.cwd() });
+    });
+
+  const trustCmd = program
+    .command("trust")
+    .description("Manage which folders codeagent is trusted to work in (docs/30)");
+
+  trustCmd
+    .command("list")
+    .description("List every folder currently trusted, most recently trusted first")
+    .action(async () => {
+      const folders = await listTrustedFolders();
+      if (folders.length === 0) {
+        renderText("No folders trusted yet.");
+        return;
+      }
+      for (const { path: folderPath, trustedAt } of folders) {
+        renderText(`${folderPath}\n  trusted: ${trustedAt}`);
+      }
+    });
+
+  trustCmd
+    .command("revoke [path]")
+    .description("Revoke trust for a folder (defaults to the current directory), or --all to clear every entry")
+    .option("--all", "Revoke every trusted folder")
+    .action(async (targetPath, options) => {
+      if (options.all) {
+        await revokeAllFolders();
+        renderText("Revoked trust for every folder.");
+        return;
+      }
+      const existed = await revokeFolder(targetPath || process.cwd());
+      renderText(existed ? "Revoked." : "That folder wasn't trusted.");
     });
 
   program

@@ -33,7 +33,7 @@ This is the full documentation set for **codeagent**, a terminal-native AI codin
 | 27 | [Interactive Config Manager](./27-config-manager.md) | `codeagent config -i`/`set`/`validate`, shared validation path |
 | 28 | [TUI Polish](./28-tui-polish.md) | Theming (`config.theme`), vim keybindings (`config.vimKeybindings`) |
 | 29 | [Agent SDK](./29-agent-sdk.md) | `codeagent/sdk` subpath, curated surface, stability contract |
-| 30 | [Folder Trust](./30-folder-trust.md) | First-time-per-folder consent gate, `~/.codeagent/trustedFolders.json`, `--trust`, `codeagent trust` (design only, not yet implemented) |
+| 30 | [Folder Trust](./30-folder-trust.md) | First-time-per-folder consent gate, `~/.codeagent/trustedFolders.json`, `--trust`, `codeagent trust` |
 | 31 | [Autonomous Mode](./31-autonomous-mode.md) | Manus-inspired mandatory planning, recitation, self-verification — `--autonomous`, `config.autonomousMode` |
 
 ## How to use this set

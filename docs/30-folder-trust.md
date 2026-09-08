@@ -1,4 +1,6 @@
-# 30 — Folder Trust (design writeup, not yet implemented)
+# 30 — Folder Trust
+
+**Status: shipped.** `src/safety/folderTrust.js`, wired into `run()` (`src/cli/index.js`), `codeagent trust list`/`revoke`. Everything below was the design writeup done before implementation, per this project's standing rule for anything touching the CLI's entry flow — kept as-is since the implementation matches it.
 
 The gap this closes: codeagent currently starts working in whatever directory it's invoked from immediately — no "do you trust this folder?" gate, unlike VS Code/Cursor/Windsurf's workspace-trust prompt. `allowedWritePaths` (default: project root) already *scopes* what's writable once running, but nothing today asks permission *before* running at all. This doc is the design pass required before touching `cli/index.js`'s entry flow — the same "docs first" discipline every other cross-cutting feature in this project (Hooks, Skills, Subagents, Sandboxing) went through before code.
 
