@@ -73,8 +73,29 @@ export async function startRepl({
     interrupted = true;
   });
 
+  // `for await...of rl` can yield its final buffered line at (or after)
+  // the moment the underlying stream hits EOF and the interface
+  // auto-closes itself — whether that close has fully landed before this
+  // loop body's own `rl.prompt()` call runs is a genuine race, not
+  // deterministic across Node versions or even just event-loop timing
+  // between runs (observed directly: passed locally, failed in CI with
+  // `ERR_USE_AFTER_CLOSE` on the very same code). A real interactive TTY
+  // session never triggers this — a live terminal's stdin doesn't hit
+  // EOF mid-conversation — so this is specifically about piped/scripted
+  // input (the same category of thing the interface-creation-timing fix
+  // above addresses). `safePrompt` makes every prompt call a no-op once
+  // the interface is confirmed closed, instead of assuming it's still
+  // safe to write to.
+  let rlClosed = false;
+  rl.on("close", () => {
+    rlClosed = true;
+  });
+  function safePrompt() {
+    if (!rlClosed) rl.prompt();
+  }
+
   rl.setPrompt("> ");
-  rl.prompt();
+  safePrompt();
 
   // `for await...of rl` (Node's documented async-iterator pattern for
   // readline), not a `while(true) { await rl.question(...) }` loop — the
@@ -93,20 +114,20 @@ export async function startRepl({
   for await (const rawInput of rl) {
     let userInput = rawInput;
     if (!userInput.trim()) {
-      rl.prompt();
+      safePrompt();
       continue;
     }
 
     const slashAction = resolveSlashCommand(userInput, { commandRegistry });
     if (slashAction.type === "help") {
       renderText(`\n${formatHelp(commandRegistry)}\n`);
-      rl.prompt();
+      safePrompt();
       continue;
     }
     if (slashAction.type === "clear") {
       session.messages = [];
       renderText("Conversation history cleared.\n");
-      rl.prompt();
+      safePrompt();
       continue;
     }
     if (slashAction.type === "plan-toggle") {
@@ -118,12 +139,12 @@ export async function startRepl({
       // recognition existed.
       config.planMode = !config.planMode;
       renderText(`Plan Mode ${config.planMode ? "enabled — destructive tools will describe, not execute" : "disabled"}.\n`);
-      rl.prompt();
+      safePrompt();
       continue;
     }
     if (slashAction.type === "unknown") {
       renderText(`Unknown command: /${slashAction.name}. Try /help.\n`);
-      rl.prompt();
+      safePrompt();
       continue;
     }
     if (slashAction.type === "prompt") {
@@ -185,7 +206,7 @@ export async function startRepl({
     }
 
     if (interrupted) break;
-    rl.prompt();
+    safePrompt();
   }
 
   rl.close();
