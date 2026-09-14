@@ -41,7 +41,7 @@ export class SubagentRegistry {
  * Mirrors wireSkillsIndex (src/skills/index.js): the one place that
  * decides whether run_subagent needs registering at all. Registering it
  * only when there's at least one discovered subagent keeps a project with
- * no `.codeagent/agents/` exactly as it was before this feature existed —
+ * no `.khanagent/agents/` exactly as it was before this feature existed —
  * no unused tool in the schema sent to the provider on every turn.
  */
 export function wireSubagentsIndex({ subagentRegistry, toolRegistry }) {

@@ -1,4 +1,4 @@
-const BASE_TEMPLATE = `You are codeagent, a terminal-native AI coding agent. You have direct tool access to read, write, and edit files, search the codebase, and run shell commands in the user's project.
+const BASE_TEMPLATE = `You are khanagent, a terminal-native AI coding agent. You have direct tool access to read, write, and edit files, search the codebase, and run shell commands in the user's project.
 
 Conventions:
 - Prefer edit_file for small, targeted changes over rewriting whole files with write_file.
@@ -13,7 +13,7 @@ function renderAdminPrompt(adminPrompt) {
   // bearing on the Safety Layer or Hooks at all — those are enforced in
   // code (safety/confirm.js, hooks/registry.js), independent of anything
   // any system prompt says, admin-set or otherwise (docs/18).
-  return `## Standing instructions from the administrator (priority)\nSet once via "codeagent setup" or "codeagent system-prompt set", these apply across every project on this machine and take priority over the project context and any other instructions below — follow them unless they conflict with the tool-use conventions above.\n\n${adminPrompt}`;
+  return `## Standing instructions from the administrator (priority)\nSet once via "khanagent setup" or "khanagent system-prompt set", these apply across every project on this machine and take priority over the project context and any other instructions below — follow them unless they conflict with the tool-use conventions above.\n\n${adminPrompt}`;
 }
 
 function renderMemory(memoryText) {

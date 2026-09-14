@@ -1,8 +1,8 @@
 # 01 — Overview
 
-## What codeagent is
+## What khanagent is
 
-`codeagent` is a terminal-native AI coding agent, installed as an npm package, that reads and writes files, searches codebases, and runs shell commands on a developer's behalf — driven by an LLM that decides which tools to call and when. It's built to work the way Claude Code works: you describe a goal in plain language, the agent plans and executes multi-step changes to your project, and you stay in control of anything destructive.
+`khanagent` is a terminal-native AI coding agent, installed as an npm package, that reads and writes files, searches codebases, and runs shell commands on a developer's behalf — driven by an LLM that decides which tools to call and when. It's built to work the way Claude Code works: you describe a goal in plain language, the agent plans and executes multi-step changes to your project, and you stay in control of anything destructive.
 
 ## Who it's for
 
@@ -22,12 +22,12 @@
 
 - **Not an IDE.** No GUI, no editor plugin (at least not in this package — that could be a separate downstream package built on the same core).
 - **Not a general multi-agent framework.** Subagents (docs/22) added scoped, single-level task delegation — explicit invocation only, one level deep (a subagent cannot itself spawn a subagent), synchronous, no automatic delegation the model decides on its own. That's a bounded capability inside one conversation, not the thing this line was originally ruling out: standing multi-agent orchestration, agent-to-agent messaging, or background/async multi-agent workflows remain out of scope.
-- **Not trying to replace version control.** codeagent tracks its own edits for undo purposes (doc 08) but is not a substitute for `git`; users should still commit their work normally.
-- **Not a hosted service.** This is a local CLI tool talking directly to the Anthropic API with the user's own key — no codeagent-run backend in the loop.
+- **Not trying to replace version control.** khanagent tracks its own edits for undo purposes (doc 08) but is not a substitute for `git`; users should still commit their work normally.
+- **Not a hosted service.** This is a local CLI tool talking directly to the Anthropic API with the user's own key — no khanagent-run backend in the loop.
 
 ## Success criteria for v1
 
-- Install via `npm install -g codeagent` or `npx codeagent`, run `codeagent` in any project directory, get a working REPL immediately.
+- Install via `npm install -g khanagent` or `npx khanagent`, run `khanagent` in any project directory, get a working REPL immediately.
 - Ask it to make a real multi-file change; it reads relevant files, proposes/executes edits with confirmation, and the change actually works.
 - Kill the process mid-task and resume the session later without losing context.
 - Run with `--yolo` in a CI/script context and have it complete unattended.

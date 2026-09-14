@@ -4,10 +4,10 @@ Tier 2, Phase 9.2. The config surface finally settled after all of Tier 1 shippe
 
 ## Three ways in, one shared validation path
 
-- **`codeagent config`** — unchanged, prints the fully resolved config (redacted).
-- **`codeagent config set <key> <value>`** — scriptable, for CI/dotfiles.
-- **`codeagent config validate`** — validates the fully resolved config and reports which field failed, if any.
-- **`codeagent config --interactive` / `-i`** — a guided menu.
+- **`khanagent config`** — unchanged, prints the fully resolved config (redacted).
+- **`khanagent config set <key> <value>`** — scriptable, for CI/dotfiles.
+- **`khanagent config validate`** — validates the fully resolved config and reports which field failed, if any.
+- **`khanagent config --interactive` / `-i`** — a guided menu.
 
 `set` and the interactive menu both go through the exact same `setConfigValue()` (`src/config/setConfigValue.js`) — one implementation of "coerce this raw string into the right type, then validate it," not two that could silently drift apart. The interactive menu is a friendlier way to reach the same function, not a parallel reimplementation of what counts as a valid value.
 
@@ -21,11 +21,11 @@ Tier 2, Phase 9.2. The config surface finally settled after all of Tier 1 shippe
 
 ## Which fields get a menu entry, and which get redirected
 
-`REDIRECTS` (in `setConfigValue.js`) explicitly names `provider`, `model`, `apiKeyEnvVar`, `providers`, and `adminSystemPrompt` — these already have dedicated commands (`codeagent use`, `codeagent setup`, `codeagent system-prompt set`) and `config set`/the interactive menu refuse to touch them directly, pointing at the right command instead of offering a second, less-safe path to the same state. Every other field in the schema is fair game via `config set <key> <value>` even if it's not one of the ~8 fields `INTERACTIVE_CONFIG_FIELDS` surfaces in the menu by default (e.g. `ollamaBaseUrl`, `maxTokenBudgetPerSession`) — the menu is a curated subset for discoverability, not the ceiling of what `config set` can reach.
+`REDIRECTS` (in `setConfigValue.js`) explicitly names `provider`, `model`, `apiKeyEnvVar`, `providers`, and `adminSystemPrompt` — these already have dedicated commands (`khanagent use`, `khanagent setup`, `khanagent system-prompt set`) and `config set`/the interactive menu refuse to touch them directly, pointing at the right command instead of offering a second, less-safe path to the same state. Every other field in the schema is fair game via `config set <key> <value>` even if it's not one of the ~8 fields `INTERACTIVE_CONFIG_FIELDS` surfaces in the menu by default (e.g. `ollamaBaseUrl`, `maxTokenBudgetPerSession`) — the menu is a curated subset for discoverability, not the ceiling of what `config set` can reach.
 
 ## A real bug this surfaced, and the fix
 
-Building `config validate` exposed a genuine pre-existing crash: `run()`'s first-run-setup detection (`shouldRunFirstTimeSetup()`) decides "not configured" purely from whether `~/.codeagentrc` has a `providers` key — a corrupted config file that happens to also be missing (or has an invalid) `providers` key looked like "first run" too, and the unguarded `loadConfig()` call inside that branch threw an uncaught `ConfigError` with a raw stack trace, before any command — including `config validate`, whose entire purpose is handling exactly this — ever got a chance to run. Fixed by wrapping that specific call in a try/catch and pointing the user at `config validate`/`setup`, same friendly-error pattern every other `loadConfig()` call site in the CLI already uses. Covered by a regression test (`test/cli/run.test.js`) rather than only the manual reproduction that found it.
+Building `config validate` exposed a genuine pre-existing crash: `run()`'s first-run-setup detection (`shouldRunFirstTimeSetup()`) decides "not configured" purely from whether `~/.khanagentrc` has a `providers` key — a corrupted config file that happens to also be missing (or has an invalid) `providers` key looked like "first run" too, and the unguarded `loadConfig()` call inside that branch threw an uncaught `ConfigError` with a raw stack trace, before any command — including `config validate`, whose entire purpose is handling exactly this — ever got a chance to run. Fixed by wrapping that specific call in a try/catch and pointing the user at `config validate`/`setup`, same friendly-error pattern every other `loadConfig()` call site in the CLI already uses. Covered by a regression test (`test/cli/run.test.js`) rather than only the manual reproduction that found it.
 
 ## Testing interactive readline flows: real streams, not subprocess piping
 
@@ -33,5 +33,5 @@ Building `config validate` exposed a genuine pre-existing crash: `run()`'s first
 
 ## What this doesn't do (v1)
 
-- **No project-level (`.codeagent/config.json`) editing** — `config set`/the interactive menu only write to `~/.codeagentrc` (global), consistent with `codeagent setup`/`codeagent use`/`codeagent system-prompt set` already being global-only. Editing project config remains a manual `.codeagent/config.json` edit, validated afterward via `codeagent config validate` (which does check the full merged resolution, project config included).
+- **No project-level (`.khanagent/config.json`) editing** — `config set`/the interactive menu only write to `~/.khanagentrc` (global), consistent with `khanagent setup`/`khanagent use`/`khanagent system-prompt set` already being global-only. Editing project config remains a manual `.khanagent/config.json` edit, validated afterward via `khanagent config validate` (which does check the full merged resolution, project config included).
 - **No undo/history for config changes** — each `config set` or interactive edit is an immediate, permanent write, same as hand-editing the file directly. No dedicated rollback mechanism beyond whatever version control the user's dotfiles are under.

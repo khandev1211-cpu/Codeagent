@@ -19,7 +19,7 @@ export class KeychainManager {
   constructor({ logger = console } = {}) {
     this.logger = logger;
     this.platform = os.platform();
-    this.serviceName = "codeagent";
+    this.serviceName = "khanagent";
   }
 
   /**
@@ -121,7 +121,7 @@ export class KeychainManager {
       // returned null on failure instead of throwing, so the outer
       // catch's fallback logic never ran at all. `Get-StoredCredential`
       // needs the CredentialManager PowerShell module, which frequently
-      // isn't installed — meaning a key saved via `codeagent setup` (or
+      // isn't installed — meaning a key saved via `khanagent setup` (or
       // that already fell back to local storage at save time) could
       // never be read back. Matches _getKeyLinux's existing pattern,
       // which already falls through correctly.
@@ -197,7 +197,7 @@ export class KeychainManager {
   _saveKeyLinux(provider, key) {
     try {
       execFileSync("which", ["pass"], { stdio: "pipe" });
-      const passPath = `codeagent/${provider}`;
+      const passPath = `khanagent/${provider}`;
       // `pass insert -f -m <path>` reads the secret from stdin until EOF —
       // passing it via `input` avoids ever building a shell command string
       // out of the key (the old code did `echo "${key}" | pass insert`,
@@ -213,7 +213,7 @@ export class KeychainManager {
   _getKeyLinux(provider) {
     try {
       execFileSync("which", ["pass"], { stdio: "pipe" });
-      const passPath = `codeagent/${provider}`;
+      const passPath = `khanagent/${provider}`;
       const result = execFileSync("pass", ["show", passPath], {
         encoding: "utf-8",
         stdio: ["pipe", "pipe", "pipe"],
@@ -227,7 +227,7 @@ export class KeychainManager {
   _deleteKeyLinux(provider) {
     try {
       execFileSync("which", ["pass"], { stdio: "pipe" });
-      const passPath = `codeagent/${provider}`;
+      const passPath = `khanagent/${provider}`;
       execFileSync("pass", ["rm", "-f", passPath], { stdio: "pipe" });
       return true;
     } catch {
@@ -241,7 +241,7 @@ export class KeychainManager {
   // and no `pass`, not intended as the primary storage mechanism.
 
   _getKeysFile() {
-    const configDir = path.join(os.homedir(), ".codeagent");
+    const configDir = path.join(os.homedir(), ".khanagent");
     if (!fs.existsSync(configDir)) {
       fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
     }

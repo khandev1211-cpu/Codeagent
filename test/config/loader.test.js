@@ -15,8 +15,8 @@ describe("loadConfig layering", () => {
   let tmpHome, tmpCwd;
 
   beforeEach(async () => {
-    tmpHome = await fs.mkdtemp(path.join(os.tmpdir(), "codeagent-home-"));
-    tmpCwd = await fs.mkdtemp(path.join(os.tmpdir(), "codeagent-cwd-"));
+    tmpHome = await fs.mkdtemp(path.join(os.tmpdir(), "khanagent-home-"));
+    tmpCwd = await fs.mkdtemp(path.join(os.tmpdir(), "khanagent-cwd-"));
   });
 
   afterEach(async () => {
@@ -35,17 +35,17 @@ describe("loadConfig layering", () => {
   });
 
   it("skillsIndexMode can be overridden to 'full' via project config", async () => {
-    await fs.mkdir(path.join(tmpCwd, ".codeagent"));
-    await fs.writeFile(path.join(tmpCwd, ".codeagent", "config.json"), JSON.stringify({ skillsIndexMode: "full" }));
+    await fs.mkdir(path.join(tmpCwd, ".khanagent"));
+    await fs.writeFile(path.join(tmpCwd, ".khanagent", "config.json"), JSON.stringify({ skillsIndexMode: "full" }));
     const config = loadConfig({}, { cwd: tmpCwd, homedir: tmpHome });
     expect(config.skillsIndexMode).toBe("full");
   });
 
   it("project config overrides global config", async () => {
-    await fs.writeFile(path.join(tmpHome, ".codeagentrc"), JSON.stringify({ maxIterationsPerTurn: 10 }));
-    await fs.mkdir(path.join(tmpCwd, ".codeagent"));
+    await fs.writeFile(path.join(tmpHome, ".khanagentrc"), JSON.stringify({ maxIterationsPerTurn: 10 }));
+    await fs.mkdir(path.join(tmpCwd, ".khanagent"));
     await fs.writeFile(
-      path.join(tmpCwd, ".codeagent", "config.json"),
+      path.join(tmpCwd, ".khanagent", "config.json"),
       JSON.stringify({ maxIterationsPerTurn: 40 })
     );
     const config = loadConfig({}, { cwd: tmpCwd, homedir: tmpHome });
@@ -53,9 +53,9 @@ describe("loadConfig layering", () => {
   });
 
   it("CLI flags override everything", async () => {
-    await fs.mkdir(path.join(tmpCwd, ".codeagent"));
+    await fs.mkdir(path.join(tmpCwd, ".khanagent"));
     await fs.writeFile(
-      path.join(tmpCwd, ".codeagent", "config.json"),
+      path.join(tmpCwd, ".khanagent", "config.json"),
       JSON.stringify({ yolo: false })
     );
     const config = loadConfig({ yolo: true }, { cwd: tmpCwd, homedir: tmpHome });
@@ -88,19 +88,19 @@ describe("global config persistence (docs/18)", () => {
   let tmpHome;
 
   beforeEach(async () => {
-    tmpHome = await fs.mkdtemp(path.join(os.tmpdir(), "codeagent-home-"));
+    tmpHome = await fs.mkdtemp(path.join(os.tmpdir(), "khanagent-home-"));
   });
 
   afterEach(async () => {
     await fs.rm(tmpHome, { recursive: true, force: true });
   });
 
-  it("configExists is false with no ~/.codeagentrc at all", () => {
+  it("configExists is false with no ~/.khanagentrc at all", () => {
     expect(configExists({ homedir: tmpHome })).toBe(false);
   });
 
   it("configExists is false for an empty or provider-less config file", async () => {
-    await fs.writeFile(path.join(tmpHome, ".codeagentrc"), JSON.stringify({ logLevel: "debug" }));
+    await fs.writeFile(path.join(tmpHome, ".khanagentrc"), JSON.stringify({ logLevel: "debug" }));
     expect(configExists({ homedir: tmpHome })).toBe(false);
   });
 

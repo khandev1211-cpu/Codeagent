@@ -48,8 +48,8 @@ describe("SetupWizard end-to-end persistence (docs/18)", () => {
     if (tmpHome) fs.rmSync(tmpHome, { recursive: true, force: true });
   });
 
-  it("fresh setup persists provider/model/key-source to ~/.codeagentrc, not just the return value", async () => {
-    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-setup-e2e-"));
+  it("fresh setup persists provider/model/key-source to ~/.khanagentrc, not just the return value", async () => {
+    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-setup-e2e-"));
     const wizard = makeDrivenWizard({
       homedir: tmpHome,
       // 1) choose provider #2 (mistral)  2) confirm keychain save? "n"
@@ -68,7 +68,7 @@ describe("SetupWizard end-to-end persistence (docs/18)", () => {
   });
 
   it("second run detects the existing provider and offers the returning-user menu instead of the fresh flow", async () => {
-    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-setup-e2e-"));
+    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-setup-e2e-"));
     await makeDrivenWizard({
       homedir: tmpHome,
       visibleAnswers: ["1", "n"],
@@ -92,7 +92,7 @@ describe("SetupWizard end-to-end persistence (docs/18)", () => {
   });
 
   it('"add another provider" excludes already-configured providers from the list', async () => {
-    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-setup-e2e-"));
+    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-setup-e2e-"));
     const wizard = makeDrivenWizard({ homedir: tmpHome, visibleAnswers: [] });
     const provider = await wizard._selectProvider(
       {},
@@ -103,7 +103,7 @@ describe("SetupWizard end-to-end persistence (docs/18)", () => {
   });
 
   it("switching the active provider updates provider/model without losing other configured providers", async () => {
-    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-setup-e2e-"));
+    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-setup-e2e-"));
     await makeDrivenWizard({
       homedir: tmpHome,
       visibleAnswers: ["1", "n"],
@@ -129,7 +129,7 @@ describe("SetupWizard end-to-end persistence (docs/18)", () => {
   });
 
   it('"reconfigure a key" does not change which provider is active', async () => {
-    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-setup-e2e-"));
+    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-setup-e2e-"));
     await makeDrivenWizard({
       homedir: tmpHome,
       visibleAnswers: ["1", "n"],
@@ -154,7 +154,7 @@ describe("SetupWizard end-to-end persistence (docs/18)", () => {
   });
 
   it("offers to reuse an existing env-var key instead of prompting for a new one", async () => {
-    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-setup-e2e-"));
+    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-setup-e2e-"));
     process.env.MISTRAL_API_KEY = "sk-already-in-env";
     try {
       const wizard = makeDrivenWizard({

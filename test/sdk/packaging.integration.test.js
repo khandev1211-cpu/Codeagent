@@ -10,8 +10,8 @@ const REPO_ROOT = path.resolve(import.meta.dirname, "../..");
  * Every other SDK test in this suite imports `src/sdk/index.js` via a
  * relative path, which proves the internal module graph resolves but
  * proves NOTHING about `package.json`'s `exports` field — a consumer who
- * actually runs `npm install codeagent` and writes
- * `import { Orchestrator } from "codeagent/sdk"` is going through a
+ * actually runs `npm install khanagent` and writes
+ * `import { Orchestrator } from "khanagent/sdk"` is going through a
  * completely different resolution path (Node's package-exports
  * algorithm, the `files` allowlist deciding what's actually in the
  * published tarball) that a relative-import test cannot exercise at all.
@@ -27,7 +27,7 @@ describe("SDK packaging (npm pack -> install -> import, real subprocess)", () =>
   let tarballPath;
 
   beforeAll(() => {
-    consumerDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-sdk-consumer-"));
+    consumerDir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-sdk-consumer-"));
     fs.writeFileSync(path.join(consumerDir, "package.json"), JSON.stringify({ name: "sdk-consumer-test", type: "module" }));
 
     const packOutput = execFileSync("npm", ["pack", "--json", REPO_ROOT], { cwd: consumerDir, encoding: "utf-8" });
@@ -49,9 +49,9 @@ describe("SDK packaging (npm pack -> install -> import, real subprocess)", () =>
     return output;
   }
 
-  it("imports core classes from the codeagent/sdk subpath", () => {
+  it("imports core classes from the khanagent/sdk subpath", () => {
     const output = runInConsumer(`
-      import { Orchestrator, ToolRegistry, SDK_VERSION } from "codeagent/sdk";
+      import { Orchestrator, ToolRegistry, SDK_VERSION } from "khanagent/sdk";
       console.log(JSON.stringify({
         hasOrchestrator: typeof Orchestrator === "function",
         hasToolRegistry: typeof ToolRegistry === "function",
@@ -61,10 +61,10 @@ describe("SDK packaging (npm pack -> install -> import, real subprocess)", () =>
     expect(JSON.parse(output)).toEqual({ hasOrchestrator: true, hasToolRegistry: true, version: "1.0.0" });
   });
 
-  it("rejects a bare 'codeagent' import with no subpath — forces the explicit, documented entry point", () => {
+  it("rejects a bare 'khanagent' import with no subpath — forces the explicit, documented entry point", () => {
     const output = runInConsumer(`
       try {
-        await import("codeagent");
+        await import("khanagent");
         console.log("UNEXPECTED_SUCCESS");
       } catch (err) {
         console.log(err.code);
@@ -75,7 +75,7 @@ describe("SDK packaging (npm pack -> install -> import, real subprocess)", () =>
 
   it("runs a full Orchestrator turn end-to-end using only the packaged SDK, no CLI code involved", () => {
     const output = runInConsumer(`
-      import { Orchestrator, ToolRegistry } from "codeagent/sdk";
+      import { Orchestrator, ToolRegistry } from "khanagent/sdk";
 
       const fakeProvider = {
         async send() {
@@ -105,7 +105,7 @@ describe("SDK packaging (npm pack -> install -> import, real subprocess)", () =>
 
   it("createDefaultRegistry() from the packaged SDK includes every built-in tool", () => {
     const output = runInConsumer(`
-      import { createDefaultRegistry } from "codeagent/sdk";
+      import { createDefaultRegistry } from "khanagent/sdk";
       const registry = createDefaultRegistry();
       console.log(registry.list().map((t) => t.name).sort().join(","));
     `);

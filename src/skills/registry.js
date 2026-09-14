@@ -7,7 +7,7 @@ import { discoverSkills } from "./discover.js";
  * via the existing read_file tool, exactly like any other project file.
  * No new tool was needed for this (PLAN.md Phase 4.1 explicitly asked
  * "check whether this needs a dedicated tool at all before building
- * one" — it doesn't: `.codeagent/skills/<name>/SKILL.md` are ordinary
+ * one" — it doesn't: `.khanagent/skills/<name>/SKILL.md` are ordinary
  * project-relative paths, and read_file has no path restriction of its
  * own to work around).
  */

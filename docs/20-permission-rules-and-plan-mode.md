@@ -10,7 +10,7 @@ The codebase already had an unrelated feature using the word "plan": `agent/plan
 
 **Plan Mode** (`config.planMode`, this doc) is a different, unrelated thing: a read-only execution mode where destructive tools describe what they would do *instead of* running at all, for the whole session. The name matches Claude Code's own actual "Plan Mode" feature — kept deliberately rather than renamed to avoid the collision, since diverging from that naming would undercut the whole point of aiming at Claude Code parity. The two features are independent and can be used together (get a task checklist, then watch it describe each step instead of performing it) or separately.
 
-## Permission rules (`.codeagent/permissions.json`)
+## Permission rules (`.khanagent/permissions.json`)
 
 Project-scoped only for v1, same convention as `hooks.json` (doc 17) and `skills/` (doc 19) — personal/plugin-scoped rules are a Plugins-phase concern.
 
@@ -29,14 +29,14 @@ Project-scoped only for v1, same convention as `hooks.json` (doc 17) and `skills
 
 **Deny always wins.** If both an allow and a deny rule match the same call, the result is deny — regardless of which was listed first in the file. This is a deliberate security choice: a silently-shadowed deny rule (a broad allow placed after a narrow deny) would be a far worse failure mode than an occasionally-too-cautious prompt. Confirmed with a real end-to-end run: a deny rule blocks a real `rm` command via the real `run_bash` tool even with `--yolo` active — `--yolo` bypasses the *interactive confirmation*, not an explicit deny rule; those are different gates.
 
-`codeagent permissions` lists configured rules — read-only, matching the `codeagent hooks`/`codeagent skills` pattern.
+`khanagent permissions` lists configured rules — read-only, matching the `khanagent hooks`/`khanagent skills` pattern.
 
 ## Plan Mode (`--plan`, `config.planMode`)
 
 A structural guarantee, not a confirmation the model can talk past: while active, `tool.execute()` is never called for any destructive tool, regardless of what permission rules or `confirm()` would otherwise decide. Non-destructive tools (`read_file`, `list_dir`, `search_code`) are unaffected — the model still needs to explore the project while planning; only actions that would change something get intercepted.
 
 ```bash
-codeagent --plan "refactor the auth module"
+khanagent --plan "refactor the auth module"
 ```
 
 Confirmed with a real end-to-end run: the real `write_file` tool, real filesystem, a file that genuinely was not modified — only a `[plan mode — not executed] write_file -> ...` description came back.

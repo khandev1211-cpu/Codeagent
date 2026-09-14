@@ -2,7 +2,7 @@ import { ModelRegistry } from "../providers/modelRegistry.js";
 
 /**
  * CLI command: Display available models for a provider.
- * Usage: codeagent models [provider] [--details]
+ * Usage: khanagent models [provider] [--details]
  */
 export async function handleModelsCommand(options = {}) {
   const { provider = "anthropic", details = false, logger = console } = options;

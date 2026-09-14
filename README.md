@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>🤖 Codeagent</h1>
+  <h1>🤖 Khanagent</h1>
   <p><strong>A terminal-native AI coding agent — describe a goal, watch it build.</strong></p>
 
   <p>
@@ -21,9 +21,9 @@
 
 ---
 
-**codeagent** is a terminal-native AI coding agent, distributed as an npm package. Describe a goal in plain language — `codeagent` reads your project, plans, edits files, runs commands, and iterates until the task is done, asking for confirmation before anything destructive.
+**khanagent** is a terminal-native AI coding agent, distributed as an npm package. Describe a goal in plain language — `khanagent` reads your project, plans, edits files, runs commands, and iterates until the task is done, asking for confirmation before anything destructive.
 
-Unlike chat-based coding assistants that only print code blocks for you to manually copy, codeagent **acts directly** on your codebase: reading, writing, editing files, searching across your project, and executing shell commands — all driven by an LLM that decides which tools to call and when.
+Unlike chat-based coding assistants that only print code blocks for you to manually copy, khanagent **acts directly** on your codebase: reading, writing, editing files, searching across your project, and executing shell commands — all driven by an LLM that decides which tools to call and when.
 
 The project's direction is a self-hosted, provider-agnostic agent with the same shape as Claude Code: agent loop, tool set, Hooks, Skills, Subagents, fine-grained permission rules, Plan Mode, sandboxing, Memory, Slash Commands, an MCP client, usage tracking, an interactive config manager, TUI theming, and an embeddable SDK all shipped — a **Plugin** system (bundling Skills+Subagents+Hooks+MCP for distribution) is the one item still ahead. See [Roadmap](#roadmap) below for what's shipped versus what's planned.
 
@@ -38,7 +38,7 @@ The project's direction is a self-hosted, provider-agnostic agent with the same 
 | 🔄 **Resumable sessions** | Kill the process and pick up exactly where you left off — no context lost. |
 | ↩️ **Undo built in** | Revert the agent's most recent file changes without touching git. |
 | 🔌 **Six providers today** | Anthropic, OpenRouter, Mistral, Groq, Cerebras, and Ollama — switch with `--provider` and `--model`. |
-| 🧙 **Guided setup** | `codeagent setup` walks through provider, API key, and model selection. |
+| 🧙 **Guided setup** | `khanagent setup` walks through provider, API key, and model selection. |
 | 📜 **Scriptable** | One-shot mode with proper exit codes — works in CI as well as interactively. |
 | 🧩 **Extensible by design** | Add new tools, providers, or config options without touching the core loop. |
 | ✅ **Skills** | 102 discoverable `SKILL.md` capabilities ship with the repo, read on demand — see Roadmap. Plugins still planned. |
@@ -47,29 +47,29 @@ The project's direction is a self-hosted, provider-agnostic agent with the same 
 
 ## Roadmap
 
-Where codeagent is headed, and honestly, what's real today versus what's still design/in-progress. A full feature-by-feature audit against current Claude Code lives in [`docs/16`](./docs/16-claude-code-parity-audit.md); day-to-day phase planning lives in `PLAN.md` (not part of the published package).
+Where khanagent is headed, and honestly, what's real today versus what's still design/in-progress. A full feature-by-feature audit against current Claude Code lives in [`docs/16`](./docs/16-claude-code-parity-audit.md); day-to-day phase planning lives in `PLAN.md` (not part of the published package).
 
 | Area | Status | Notes |
 |---|---|---|
 | Core agent loop, 6 tools, safety/undo/sessions | ✅ Shipped | `docs/02`–`docs/08`. |
-| Six provider adapters | ✅ Shipped | `docs/06`. Switch with `codeagent use <provider>`, or override per-run with `--provider`/`--model`. |
-| Setup wizard, persisted config, first-run auto-detection | ✅ Shipped | `codeagent setup` remembers your choices in `~/.codeagentrc` and auto-runs on a fresh install. `codeagent providers` / `codeagent use` manage multiple configured providers; history carries over across a switch — see `docs/18`. |
-| API key in OS keychain | ✅ Shipped | Read *and* write now — `codeagent setup` can save a key to the keychain and it's actually read back at boot (`docs/18`). Also fixed a real shell-injection risk in how keys were passed to `security`/`pass`/`cmdkey`. |
-| Admin system prompt | ✅ Shipped (v1) | `codeagent system-prompt set "<text>"` — global, priority-layered over project context, doesn't touch the Safety Layer or Hooks (`docs/18`). |
-| **Hooks** (lifecycle events: pre/post tool use, session start/end) | ✅ Shipped (v1) | Shell-command hooks only; `PreToolUse` can block, `PostToolUse` can add context. Project-scoped (`.codeagent/hooks.json`) only — see `docs/17` and `codeagent hooks`. |
-| **Skills** (discoverable `SKILL.md` folders, progressive disclosure) | ✅ Shipped | Project-scoped (`.codeagent/skills/`) only for now. **102 skills ship with the repo**, spanning languages, testing, git workflow, code quality, APIs, databases, security, DevOps, frontend, docs, performance, debugging, concurrency, architecture, cloud, mobile, and more. Two-tier index (`config.skillsIndexMode`, default `"compact"`): system prompt carries names only (~535 tokens at this scale, down from ~6,100), descriptions fetched on demand via the `skill_info` tool — see `docs/19`. `allowed-tools` is parsed but still not enforced against skills specifically. See `codeagent skills`. |
-| Fine-grained permission rules & Plan Mode | ✅ Shipped (v1) | Evolves the existing confirm/`--yolo` safety layer rather than replacing it — deny always wins over allow; `--plan` makes destructive tools describe instead of execute, for the whole session. Both verified against real tools and real files, not just unit tests. In-REPL `/plan` toggle now available (Slash Commands, `docs/24`). See `docs/20`, `codeagent permissions`. |
-| **Rich TUI** (Ink-based, live status header, mid-session model switcher) | ✅ Shipped (v1) | Automatic when both stdin/stdout are a real TTY; falls back to the plain REPL otherwise (piped input, CI) or if `CODEAGENT_PLAIN_REPL=1`. History carries over across a switch — the same guarantee as `codeagent use`, now reachable without leaving the session. See `docs/21`. |
-| **Subagents** | ✅ Shipped (v1) | Scoped, single-level task delegation via the `run_subagent` tool — explicit invocation only, no automatic delegation. Filesystem definitions (`.codeagent/agents/<name>.md`, same frontmatter shape as Skills). Reuses `Orchestrator` itself for execution (docs/22's core decision) rather than a second engine, so confirm/hooks/permission-rules/Plan Mode all apply identically inside a subagent's own tool calls — no separate, weaker safety path. A subagent's tool registry always excludes `run_subagent` (no recursion, v1 boundary); a definition's `tools:` field can narrow the tool subset further but never grant beyond what the parent has. Synchronous only — the main loop blocks until the subagent finishes. See `docs/22`, `codeagent subagents`. |
-| **Memory** (`AGENTS.md`, `CLAUDE.md`-equivalent) | ✅ Shipped (v1) | `AGENTS.md` at the project root — visible, not hidden under `.codeagent/`, same reasoning as README auto-discovery — plus `~/.codeagent/AGENTS.md` for personal cross-project preferences. Both auto-loaded every session, rendered into the system prompt between the admin prompt and the skills index. No nested/directory-layered discovery and no `@import` syntax in v1 — see `docs/23` for why. See `codeagent memory`. |
-| **Slash Commands** | ✅ Shipped (v1) | Built-ins (`/help`, `/clear`, `/plan`) plus project-scoped custom commands (`.codeagent/commands/<name>.md`, `$ARGUMENTS` substitution — same frontmatter shape as Skills/Subagents). A custom command resolves to a plain prompt string handed to the orchestrator exactly as if typed directly — no new execution concept, no new safety surface. Closed the deferred in-REPL `/plan` toggle as a direct consequence. See `docs/24`, `codeagent commands`. |
-| **MCP Client** | ✅ Shipped (v1) | Official `@modelcontextprotocol/sdk`, stdio transport (`.codeagent/mcp.json`, modeled on Claude Code's `.mcp.json`). Wrapped into the exact same tool shape as built-ins — no separate code path for confirm/hooks/permission-rules/Plan Mode. `mcp__<server>__<tool>` naming (collision avoidance + third-party-origin transparency in one mechanism). `destructive: true` unless a server's `readOnlyHint` annotation explicitly clears the bar (a server's own `destructiveHint: false` claim alone is deliberately not trusted). One server failing to connect doesn't take down the session. Verified against a real subprocess MCP server, not mocked. See `docs/25`, `codeagent mcp`. |
+| Six provider adapters | ✅ Shipped | `docs/06`. Switch with `khanagent use <provider>`, or override per-run with `--provider`/`--model`. |
+| Setup wizard, persisted config, first-run auto-detection | ✅ Shipped | `khanagent setup` remembers your choices in `~/.khanagentrc` and auto-runs on a fresh install. `khanagent providers` / `khanagent use` manage multiple configured providers; history carries over across a switch — see `docs/18`. |
+| API key in OS keychain | ✅ Shipped | Read *and* write now — `khanagent setup` can save a key to the keychain and it's actually read back at boot (`docs/18`). Also fixed a real shell-injection risk in how keys were passed to `security`/`pass`/`cmdkey`. |
+| Admin system prompt | ✅ Shipped (v1) | `khanagent system-prompt set "<text>"` — global, priority-layered over project context, doesn't touch the Safety Layer or Hooks (`docs/18`). |
+| **Hooks** (lifecycle events: pre/post tool use, session start/end) | ✅ Shipped (v1) | Shell-command hooks only; `PreToolUse` can block, `PostToolUse` can add context. Project-scoped (`.khanagent/hooks.json`) only — see `docs/17` and `khanagent hooks`. |
+| **Skills** (discoverable `SKILL.md` folders, progressive disclosure) | ✅ Shipped | Project-scoped (`.khanagent/skills/`) only for now. **102 skills ship with the repo**, spanning languages, testing, git workflow, code quality, APIs, databases, security, DevOps, frontend, docs, performance, debugging, concurrency, architecture, cloud, mobile, and more. Two-tier index (`config.skillsIndexMode`, default `"compact"`): system prompt carries names only (~535 tokens at this scale, down from ~6,100), descriptions fetched on demand via the `skill_info` tool — see `docs/19`. `allowed-tools` is parsed but still not enforced against skills specifically. See `khanagent skills`. |
+| Fine-grained permission rules & Plan Mode | ✅ Shipped (v1) | Evolves the existing confirm/`--yolo` safety layer rather than replacing it — deny always wins over allow; `--plan` makes destructive tools describe instead of execute, for the whole session. Both verified against real tools and real files, not just unit tests. In-REPL `/plan` toggle now available (Slash Commands, `docs/24`). See `docs/20`, `khanagent permissions`. |
+| **Rich TUI** (Ink-based, live status header, mid-session model switcher) | ✅ Shipped (v1) | Automatic when both stdin/stdout are a real TTY; falls back to the plain REPL otherwise (piped input, CI) or if `KHANAGENT_PLAIN_REPL=1`. History carries over across a switch — the same guarantee as `khanagent use`, now reachable without leaving the session. See `docs/21`. |
+| **Subagents** | ✅ Shipped (v1) | Scoped, single-level task delegation via the `run_subagent` tool — explicit invocation only, no automatic delegation. Filesystem definitions (`.khanagent/agents/<name>.md`, same frontmatter shape as Skills). Reuses `Orchestrator` itself for execution (docs/22's core decision) rather than a second engine, so confirm/hooks/permission-rules/Plan Mode all apply identically inside a subagent's own tool calls — no separate, weaker safety path. A subagent's tool registry always excludes `run_subagent` (no recursion, v1 boundary); a definition's `tools:` field can narrow the tool subset further but never grant beyond what the parent has. Synchronous only — the main loop blocks until the subagent finishes. See `docs/22`, `khanagent subagents`. |
+| **Memory** (`AGENTS.md`, `CLAUDE.md`-equivalent) | ✅ Shipped (v1) | `AGENTS.md` at the project root — visible, not hidden under `.khanagent/`, same reasoning as README auto-discovery — plus `~/.khanagent/AGENTS.md` for personal cross-project preferences. Both auto-loaded every session, rendered into the system prompt between the admin prompt and the skills index. No nested/directory-layered discovery and no `@import` syntax in v1 — see `docs/23` for why. See `khanagent memory`. |
+| **Slash Commands** | ✅ Shipped (v1) | Built-ins (`/help`, `/clear`, `/plan`) plus project-scoped custom commands (`.khanagent/commands/<name>.md`, `$ARGUMENTS` substitution — same frontmatter shape as Skills/Subagents). A custom command resolves to a plain prompt string handed to the orchestrator exactly as if typed directly — no new execution concept, no new safety surface. Closed the deferred in-REPL `/plan` toggle as a direct consequence. See `docs/24`, `khanagent commands`. |
+| **MCP Client** | ✅ Shipped (v1) | Official `@modelcontextprotocol/sdk`, stdio transport (`.khanagent/mcp.json`, modeled on Claude Code's `.mcp.json`). Wrapped into the exact same tool shape as built-ins — no separate code path for confirm/hooks/permission-rules/Plan Mode. `mcp__<server>__<tool>` naming (collision avoidance + third-party-origin transparency in one mechanism). `destructive: true` unless a server's `readOnlyHint` annotation explicitly clears the bar (a server's own `destructiveHint: false` claim alone is deliberately not trusted). One server failing to connect doesn't take down the session. Verified against a real subprocess MCP server, not mocked. See `docs/25`, `khanagent mcp`. |
 | **Plugins** (bundle Skills+Subagents+Hooks+MCP, install from GitHub/npm/local path) | 🚧 Planned | Deliberately last — in real Claude Code a plugin is a packaging format over the four items above, so building it first would ship an empty container. Now unblocked (Skills/Subagents/Hooks/MCP all shipped). |
-| **Usage/cost tracking** | ✅ Shipped (v1) | `codeagent usage` (`--today`/`--week`/`--all`, default this month) and `codeagent quota`/`codeagent quota set <provider> <limitUSD>`. Global JSONL log (`~/.codeagent/usage/`, same actual storage shape `SessionStore` uses), advisory-only quotas — nothing blocks a request, a breach only produces a message after the fact. Cost is an explicit estimate: a hardcoded pricing table with a visible "as of" date, `null` (unpriced, e.g. most `openrouter` models) kept distinct from `0` (genuinely free, `ollama`). See `docs/26`. |
-| Interactive config manager | ✅ Shipped (v1) | `codeagent config --interactive`/`-i` (guided menu, reuses `SetupWizard` for provider/model), `codeagent config set <key> <value>` (scriptable), `codeagent config validate` (reports which field failed, if any). One shared `setConfigValue()` path for both the menu and `set` — not two implementations that could drift. Building `validate` surfaced and fixed a real pre-existing crash in first-run detection on a corrupted config file. See `docs/27`. |
+| **Usage/cost tracking** | ✅ Shipped (v1) | `khanagent usage` (`--today`/`--week`/`--all`, default this month) and `khanagent quota`/`khanagent quota set <provider> <limitUSD>`. Global JSONL log (`~/.khanagent/usage/`, same actual storage shape `SessionStore` uses), advisory-only quotas — nothing blocks a request, a breach only produces a message after the fact. Cost is an explicit estimate: a hardcoded pricing table with a visible "as of" date, `null` (unpriced, e.g. most `openrouter` models) kept distinct from `0` (genuinely free, `ollama`). See `docs/26`. |
+| Interactive config manager | ✅ Shipped (v1) | `khanagent config --interactive`/`-i` (guided menu, reuses `SetupWizard` for provider/model), `khanagent config set <key> <value>` (scriptable), `khanagent config validate` (reports which field failed, if any). One shared `setConfigValue()` path for both the menu and `set` — not two implementations that could drift. Building `validate` surfaced and fixed a real pre-existing crash in first-run detection on a corrupted config file. See `docs/27`. |
 | TUI theming & vim keybindings | ✅ Shipped (v1) | `config.theme` (`default`/`monochrome`/`high-contrast`, one shared semantic palette `StatusHeader`/`SessionLog` read from). `config.vimKeybindings` — an opt-in genuine subset of vim (not full emulation) for the TUI's input box: `i`/`a`/`I`/`A`/`h`/`l`/`0`/`$`/`x`/`dd`, Enter always submits regardless of mode. Both purely additive — defaults preserve the exact original TUI experience for anyone not opting in. See `docs/28`. |
-| Agent SDK equivalent (codeagent-as-a-library) | ✅ Shipped (v1) | `import { Orchestrator, ToolRegistry, createDefaultRegistry, ... } from "codeagent/sdk"` — a curated, individually-audited export surface, not a blanket re-export of `src/`. `package.json`'s `exports` field defines only the `./sdk` subpath; a bare `import "codeagent"` is a hard, unambiguous error. `SDK_VERSION` stability contract (independent of the package's own version — breaking the exported surface needs a major bump, documented before it ships). Verified with a real `npm pack` → install → import round trip into a throwaway consumer project (not just relative-path imports), including a full `Orchestrator.runTurn()` executed entirely through the packaged SDK. See `docs/29`. |
-| Folder Trust (first-time-per-folder consent, VS Code/Cursor-style) | ✅ Shipped (v1) | `~/.codeagent/trustedFolders.json` (realpath-keyed, global — resolves symlinks so one can't be used to bypass or duplicate a trust entry), `--trust` flag (distinct from `--yolo` on purpose — different question), `codeagent trust list`/`revoke [path]`/`revoke --all`. No standalone `trust add` — trust is only ever granted via the real prompt or `--trust` on an actual invocation. Verified end-to-end through the real CLI entry point, not just the decision logic: declining never writes a trust entry, an already-trusted folder never re-prompts, and trusting a parent directory does not trust a subdirectory (no inheritance). See `docs/30`. |
+| Agent SDK equivalent (khanagent-as-a-library) | ✅ Shipped (v1) | `import { Orchestrator, ToolRegistry, createDefaultRegistry, ... } from "khanagent/sdk"` — a curated, individually-audited export surface, not a blanket re-export of `src/`. `package.json`'s `exports` field defines only the `./sdk` subpath; a bare `import "khanagent"` is a hard, unambiguous error. `SDK_VERSION` stability contract (independent of the package's own version — breaking the exported surface needs a major bump, documented before it ships). Verified with a real `npm pack` → install → import round trip into a throwaway consumer project (not just relative-path imports), including a full `Orchestrator.runTurn()` executed entirely through the packaged SDK. See `docs/29`. |
+| Folder Trust (first-time-per-folder consent, VS Code/Cursor-style) | ✅ Shipped (v1) | `~/.khanagent/trustedFolders.json` (realpath-keyed, global — resolves symlinks so one can't be used to bypass or duplicate a trust entry), `--trust` flag (distinct from `--yolo` on purpose — different question), `khanagent trust list`/`revoke [path]`/`revoke --all`. No standalone `trust add` — trust is only ever granted via the real prompt or `--trust` on an actual invocation. Verified end-to-end through the real CLI entry point, not just the decision logic: declining never writes a trust entry, an already-trusted folder never re-prompts, and trusting a parent directory does not trust a subdirectory (no inheritance). See `docs/30`. |
 | **Autonomous Mode** (`--autonomous`) | ✅ Shipped (v1) | Manus-inspired workflow discipline, explicitly *not* Manus's safety posture: mandatory planning, periodic plan "recitation" into context as a plain message (not a system-prompt rewrite) on long turns, an instruction-only self-verification section in the system prompt (run tests/lint before declaring done), auto-approved destructive calls via the same `--yolo` bypass path (not a second mechanism). **Sandboxing and `allowedWritePaths` are completely untouched by this flag.** Verified end-to-end against the real orchestrator loop — including that recitation fires at the right iteration and not before, and that destructive calls still route through the same `confirm()` function as any other mode. See `docs/31`. |
 
 Enterprise/hosted infrastructure (Bedrock/Vertex/Foundry routing, gateways, admin console, Slack/VS Code/JetBrains first-party extensions, hosted cloud execution, agent teams, remote control, computer use) is an explicit non-goal for this project — see `docs/16` for the reasoning.
@@ -86,13 +86,13 @@ Enterprise/hosted infrastructure (Bedrock/Vertex/Foundry routing, gateways, admi
 ### Install
 
 ```bash
-npm install -g codeagent
+npm install -g khanagent
 ```
 
 Or run without installing:
 
 ```bash
-npx codeagent
+npx khanagent
 ```
 
 ### Setup
@@ -107,7 +107,7 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 
 ```bash
 cd your-project
-codeagent
+khanagent
 ```
 
 That starts an interactive REPL in your current directory. Describe what you want:
@@ -129,34 +129,34 @@ The agent will:
 ### Commands
 
 ```
-codeagent                        Start interactive session in current directory
-codeagent "do X"                 One-shot: run a single request, print result, exit
-codeagent --resume <id>          Resume a specific saved session
-codeagent --resume last          Resume the most recent session for this project
-codeagent --yolo                 Skip destructive-action confirmations for this run
-codeagent --plan                 Plan mode: describe destructive actions instead of performing them
-codeagent --model <name>         Override the configured model for this run
-codeagent --provider <name>      Override the configured provider for this run
-codeagent setup                  Interactive first-time setup wizard (provider, key, model)
-codeagent models [provider]      List available models for a provider (--details for pricing/context)
-codeagent mistral-models         List Mistral models live from your API key
-codeagent undo                   Revert the most recent destructive change
-codeagent undo <ref>             Revert a specific recorded change
-codeagent sessions               List saved sessions for this project
-codeagent config                 Print the fully resolved config (API key redacted)
-codeagent hooks                  List hooks configured for this project (.codeagent/hooks.json)
-codeagent skills                  List skills discovered in .codeagent/skills/
-codeagent permissions             List permission rules configured for this project (.codeagent/permissions.json)
-codeagent providers               List every configured provider, which is active, and its key source
-codeagent use <provider> [model]  Switch the active provider/model (persists; history carries over)
-codeagent system-prompt [show|set <text>|clear]   Manage your global admin system prompt
+khanagent                        Start interactive session in current directory
+khanagent "do X"                 One-shot: run a single request, print result, exit
+khanagent --resume <id>          Resume a specific saved session
+khanagent --resume last          Resume the most recent session for this project
+khanagent --yolo                 Skip destructive-action confirmations for this run
+khanagent --plan                 Plan mode: describe destructive actions instead of performing them
+khanagent --model <name>         Override the configured model for this run
+khanagent --provider <name>      Override the configured provider for this run
+khanagent setup                  Interactive first-time setup wizard (provider, key, model)
+khanagent models [provider]      List available models for a provider (--details for pricing/context)
+khanagent mistral-models         List Mistral models live from your API key
+khanagent undo                   Revert the most recent destructive change
+khanagent undo <ref>             Revert a specific recorded change
+khanagent sessions               List saved sessions for this project
+khanagent config                 Print the fully resolved config (API key redacted)
+khanagent hooks                  List hooks configured for this project (.khanagent/hooks.json)
+khanagent skills                  List skills discovered in .khanagent/skills/
+khanagent permissions             List permission rules configured for this project (.khanagent/permissions.json)
+khanagent providers               List every configured provider, which is active, and its key source
+khanagent use <provider> [model]  Switch the active provider/model (persists; history carries over)
+khanagent system-prompt [show|set <text>|clear]   Manage your global admin system prompt
 ```
 
-> **Setup wizard:** `codeagent setup` walks you through it once — provider, key, model — and remembers it in `~/.codeagentrc`. Run it again anytime to add another provider, switch your default, or reconfigure a key; on a completely fresh install, just running `codeagent` triggers it automatically before your first command.
+> **Setup wizard:** `khanagent setup` walks you through it once — provider, key, model — and remembers it in `~/.khanagentrc`. Run it again anytime to add another provider, switch your default, or reconfigure a key; on a completely fresh install, just running `khanagent` triggers it automatically before your first command.
 
-> **Interactive session:** a real terminal (stdin *and* stdout both TTYs) gets the rich Ink-based TUI automatically — live status header, Tab to open a model switcher mid-session. Piped input, CI, and other non-interactive contexts automatically get the plain scrolling REPL instead, which is also always available on demand via `CODEAGENT_PLAIN_REPL=1`. See `docs/21`.
+> **Interactive session:** a real terminal (stdin *and* stdout both TTYs) gets the rich Ink-based TUI automatically — live status header, Tab to open a model switcher mid-session. Piped input, CI, and other non-interactive contexts automatically get the plain scrolling REPL instead, which is also always available on demand via `KHANAGENT_PLAIN_REPL=1`. See `docs/21`.
 
-> **Interactive session:** in a real terminal, `codeagent` (no arguments) launches the rich Ink-based TUI — a live status header plus Tab to open a model switcher mid-session. Piped input, CI, or `CODEAGENT_PLAIN_REPL=1` all fall back to the plain-text REPL instead. See `docs/21`.
+> **Interactive session:** in a real terminal, `khanagent` (no arguments) launches the rich Ink-based TUI — a live status header plus Tab to open a model switcher mid-session. Piped input, CI, or `KHANAGENT_PLAIN_REPL=1` all fall back to the plain-text REPL instead. See `docs/21`.
 
 ### Interactive REPL
 
@@ -168,21 +168,21 @@ codeagent system-prompt [show|set <text>|clear]   Manage your global admin syste
 ### One-shot mode
 
 ```bash
-codeagent --yolo "run the migration"
+khanagent --yolo "run the migration"
 ```
 
 Runs a single turn non-interactively and exits with:
 - Exit code `0` on success.
 - Non-zero exit code on failure (limit hit, unrecoverable error, or destructive action needing confirmation without a TTY).
 
-This makes codeagent suitable for scripting and CI pipelines.
+This makes khanagent suitable for scripting and CI pipelines.
 
 ### Session management
 
 ```bash
-codeagent sessions              # List all saved sessions
-codeagent --resume last         # Resume the most recent session
-codeagent --resume abc123       # Resume a specific session by ID
+khanagent sessions              # List all saved sessions
+khanagent --resume last         # Resume the most recent session
+khanagent --resume abc123       # Resume a specific session by ID
 ```
 
 Sessions are persisted after every turn (not just on clean exit), so a killed process loses at most one in-flight turn.
@@ -190,8 +190,8 @@ Sessions are persisted after every turn (not just on clean exit), so a killed pr
 ### Undo
 
 ```bash
-codeagent undo                  # Revert the most recent destructive change
-codeagent undo abc123           # Revert a specific recorded change
+khanagent undo                  # Revert the most recent destructive change
+khanagent undo abc123           # Revert a specific recorded change
 ```
 
 The undo system tracks every destructive action with before/after content — it's a fast safety net, not a replacement for git.
@@ -200,7 +200,7 @@ The undo system tracks every destructive action with before/after content — it
 
 ## Architecture
 
-codeagent is built on a clean, layered architecture where each component has exactly one responsibility:
+khanagent is built on a clean, layered architecture where each component has exactly one responsibility:
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -262,7 +262,7 @@ codeagent is built on a clean, layered architecture where each component has exa
 Settings resolve in this order (highest precedence first):
 
 ```
-CLI flags → Project config (.codeagent/config.json) → Global config (~/.codeagentrc) → Built-in defaults
+CLI flags → Project config (.khanagent/config.json) → Global config (~/.khanagentrc) → Built-in defaults
 ```
 
 You don't need any config file to get started — everything works out of the box once `ANTHROPIC_API_KEY` is set.
@@ -281,7 +281,7 @@ You don't need any config file to get started — everything works out of the bo
 
 ### Supported providers
 
-`codeagent` ships six provider adapters, all behind the same `Provider` interface (doc 06) — switching between them is just `--provider <name>` (and usually `--model <name>` too), no code change.
+`khanagent` ships six provider adapters, all behind the same `Provider` interface (doc 06) — switching between them is just `--provider <name>` (and usually `--model <name>` too), no code change.
 
 | Provider | `provider` value | API key env var | Notes |
 |---|---|---|---|
@@ -296,12 +296,12 @@ Example:
 
 ```bash
 export GROQ_API_KEY="gsk_..."
-codeagent --provider groq --model llama-3.3-70b-versatile
+khanagent --provider groq --model llama-3.3-70b-versatile
 ```
 
 ```bash
 # No API key needed — talks to a local Ollama server
-codeagent --provider ollama --model llama3.1
+khanagent --provider ollama --model llama3.1
 ```
 
 ### API key
@@ -331,7 +331,7 @@ If you want the agent to run unattended (e.g., in a script or CI), pass `--yolo`
 
 ## Tools
 
-codeagent ships with six core tools that give the agent full control over your project:
+khanagent ships with six core tools that give the agent full control over your project:
 
 | Tool | Destructive | Purpose |
 |---|---|---|
@@ -371,17 +371,17 @@ Full architecture and design docs live in [`docs/`](./docs):
 | [16 — Claude Code Parity Audit](./docs/16-claude-code-parity-audit.md) | Feature-by-feature audit vs. current Claude Code; what's in scope, what isn't, and why |
 | [17 — Hooks](./docs/17-hooks.md) | Lifecycle event system — PreToolUse/PostToolUse/SessionStart/SessionEnd |
 | [18 — Provider Management & Admin Prompt](./docs/18-provider-management-and-admin-prompt.md) | Multi-provider config, persisted setup, shared history across providers, admin system prompt |
-| [19 — Skills](./docs/19-skills.md) | `SKILL.md` discovery, progressive disclosure, `.codeagent/skills/` |
+| [19 — Skills](./docs/19-skills.md) | `SKILL.md` discovery, progressive disclosure, `.khanagent/skills/` |
 | [20 — Permission Rules & Plan Mode](./docs/20-permission-rules-and-plan-mode.md) | Fine-grained allow/deny rules, `--plan` read-only execution mode, precedence with Hooks and Safety |
 | [21 — Rich TUI](./docs/21-rich-tui.md) | Ink-based interactive session — status header, mid-session model switcher |
 | [22 — Subagents](./docs/22-subagents.md) | Scoped single-level task delegation, design writeup + implementation notes |
 | [23 — Memory](./docs/23-memory.md) | `AGENTS.md` project + personal instruction files, `CLAUDE.md`-equivalent |
 | [24 — Slash Commands](./docs/24-slash-commands.md) | Built-in + custom in-REPL commands, `$ARGUMENTS` substitution, `/plan` toggle |
-| [25 — MCP Client](./docs/25-mcp.md) | External tool servers, `.codeagent/mcp.json`, safety/naming/trust design |
-| [26 — Usage Tracking](./docs/26-usage-tracking.md) | `codeagent usage`/`codeagent quota`, cost estimation, advisory quotas |
-| [27 — Interactive Config Manager](./docs/27-config-manager.md) | `codeagent config -i`/`set`/`validate`, shared validation path |
+| [25 — MCP Client](./docs/25-mcp.md) | External tool servers, `.khanagent/mcp.json`, safety/naming/trust design |
+| [26 — Usage Tracking](./docs/26-usage-tracking.md) | `khanagent usage`/`khanagent quota`, cost estimation, advisory quotas |
+| [27 — Interactive Config Manager](./docs/27-config-manager.md) | `khanagent config -i`/`set`/`validate`, shared validation path |
 | [28 — TUI Polish](./docs/28-tui-polish.md) | Theming (`config.theme`), vim keybindings (`config.vimKeybindings`) |
-| [29 — Agent SDK](./docs/29-agent-sdk.md) | `codeagent/sdk` subpath, curated surface, stability contract |
+| [29 — Agent SDK](./docs/29-agent-sdk.md) | `khanagent/sdk` subpath, curated surface, stability contract |
 | [30 — Folder Trust](./docs/30-folder-trust.md) | First-time-per-folder consent gate |
 | [31 — Autonomous Mode](./docs/31-autonomous-mode.md) | Manus-inspired mandatory planning, recitation, self-verification |
 
@@ -389,7 +389,7 @@ Full architecture and design docs live in [`docs/`](./docs):
 
 ## Extensibility
 
-codeagent is designed so that adding capabilities is **additive** — a new file plus a one-line registration — rather than requiring changes to the orchestrator, provider layer, or safety layer.
+khanagent is designed so that adding capabilities is **additive** — a new file plus a one-line registration — rather than requiring changes to the orchestrator, provider layer, or safety layer.
 
 | Extension | What to do |
 |---|---|
@@ -413,7 +413,7 @@ We welcome contributions! Here's how to get started:
 ```bash
 # Setup
 git clone https://github.com/khandev1211-cpu/Codeagent.git
-cd codeagent
+cd khanagent
 npm install
 
 # Run tests
@@ -439,7 +439,7 @@ Key security guarantees:
 
 ## License
 
-[MIT](./LICENSE) © codeagent contributors
+[MIT](./LICENSE) © khanagent contributors
 
 ---
 

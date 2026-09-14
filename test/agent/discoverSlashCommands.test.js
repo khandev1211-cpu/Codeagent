@@ -14,8 +14,8 @@ describe("discoverSlashCommands", () => {
   let commandsDir;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-commands-"));
-    commandsDir = path.join(tmpDir, ".codeagent", "commands");
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-commands-"));
+    commandsDir = path.join(tmpDir, ".khanagent", "commands");
     fs.mkdirSync(commandsDir, { recursive: true });
   });
 
@@ -23,7 +23,7 @@ describe("discoverSlashCommands", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("returns an empty array when .codeagent/commands doesn't exist", () => {
+  it("returns an empty array when .khanagent/commands doesn't exist", () => {
     fs.rmSync(commandsDir, { recursive: true, force: true });
     expect(discoverSlashCommands({ cwd: tmpDir })).toEqual([]);
   });
@@ -59,7 +59,7 @@ describe("discoverSlashCommands", () => {
 });
 
 describe("SlashCommandRegistry", () => {
-  const SAMPLE = [{ name: "review", description: "Reviews a diff.", template: "Review: $ARGUMENTS", path: ".codeagent/commands/review.md" }];
+  const SAMPLE = [{ name: "review", description: "Reviews a diff.", template: "Review: $ARGUMENTS", path: ".khanagent/commands/review.md" }];
 
   it("list/get behave as expected", () => {
     const registry = new SlashCommandRegistry({ commands: SAMPLE });

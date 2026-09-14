@@ -95,7 +95,7 @@ async function oneShot(request, { config, logger, cwd }) {
   // Wasn't wired into the one-shot path at all before Autonomous Mode
   // (docs/31) — repl.js and the TUI already had this, one-shot didn't.
   // Autonomous Mode makes planning mandatory (shouldPlan() returns true
-  // whenever config.autonomousMode is set), so without this, `codeagent
+  // whenever config.autonomousMode is set), so without this, `khanagent
   // --autonomous "<request>"` would silently skip planning/recitation
   // entirely for the one invocation style most likely to actually use
   // the flag (a single, unattended, hands-off run).
@@ -190,16 +190,16 @@ async function interactive({ config, logger, cwd, resumeId }) {
   // The rich Ink TUI (docs/21) needs a real terminal on both ends — raw-mode
   // keyboard capture needs stdin to be a TTY, screen redrawing needs stdout
   // to be one. Piped input/output, CI, and non-interactive environments all
-  // fall back to the plain REPL (docs/10), which is what keeps codeagent's
+  // fall back to the plain REPL (docs/10), which is what keeps khanagent's
   // "scriptable, works in CI" goal intact — the fallback isn't a downgrade
-  // path, it's the correct behavior for those contexts. CODEAGENT_PLAIN_REPL=1
+  // path, it's the correct behavior for those contexts. KHANAGENT_PLAIN_REPL=1
   // forces the fallback even in a real terminal, as an escape hatch.
-  const useTui = process.stdin.isTTY && process.stdout.isTTY && process.env.CODEAGENT_PLAIN_REPL !== "1";
+  const useTui = process.stdin.isTTY && process.stdout.isTTY && process.env.KHANAGENT_PLAIN_REPL !== "1";
 
   if (useTui) {
     // Dynamic import, not a static one at the top of this file — ink/react
     // are real dependencies with real startup cost, and every one-shot,
-    // scripted, or CI invocation of codeagent should never pay for loading
+    // scripted, or CI invocation of khanagent should never pay for loading
     // them at all, only sessions that actually reach this branch.
     const { startTui } = await import("./tui/index.js");
     await startTui(replParams);
@@ -257,7 +257,7 @@ function permissionsCommand({ cwd }) {
     return;
   }
   if (rulesConfig.rules.length === 0) {
-    renderText("No permission rules configured. Add .codeagent/permissions.json to define some — see docs/20.");
+    renderText("No permission rules configured. Add .khanagent/permissions.json to define some — see docs/20.");
     return;
   }
   for (const rule of rulesConfig.rules) {
@@ -270,7 +270,7 @@ function skillsCommand({ cwd }) {
   const registry = new SkillRegistry({ cwd, logger: { warn: (msg) => renderText(`(warning) ${msg}`) } });
   const skills = registry.list();
   if (skills.length === 0) {
-    renderText('No skills configured. Add .codeagent/skills/<name>/SKILL.md to define one — see docs/19.');
+    renderText('No skills configured. Add .khanagent/skills/<name>/SKILL.md to define one — see docs/19.');
     return;
   }
   for (const skill of skills) {
@@ -284,7 +284,7 @@ function subagentsCommand({ cwd }) {
   const registry = new SubagentRegistry({ cwd, logger: { warn: (msg) => renderText(`(warning) ${msg}`) } });
   const subagents = registry.list();
   if (subagents.length === 0) {
-    renderText('No subagents configured. Add .codeagent/agents/<name>.md to define one — see docs/22.');
+    renderText('No subagents configured. Add .khanagent/agents/<name>.md to define one — see docs/22.');
     return;
   }
   for (const subagent of subagents) {
@@ -297,13 +297,13 @@ function subagentsCommand({ cwd }) {
 async function memoryCommand({ cwd }) {
   const { global, project } = await loadMemory({ cwd });
   if (!global && !project) {
-    renderText("No memory files found. Create AGENTS.md at the project root, or ~/.codeagent/AGENTS.md for personal cross-project instructions — see docs/23.");
+    renderText("No memory files found. Create AGENTS.md at the project root, or ~/.khanagent/AGENTS.md for personal cross-project instructions — see docs/23.");
     return;
   }
   if (global) {
-    renderText(`~/.codeagent/AGENTS.md (${global.length} chars, loaded for every project)`);
+    renderText(`~/.khanagent/AGENTS.md (${global.length} chars, loaded for every project)`);
   } else {
-    renderText("~/.codeagent/AGENTS.md: not found");
+    renderText("~/.khanagent/AGENTS.md: not found");
   }
   if (project) {
     renderText(`AGENTS.md (${project.length} chars, this project only)`);
@@ -321,7 +321,7 @@ async function mcpCommand({ cwd }) {
   const toolRegistry = new ToolRegistry([]);
   const result = await connectAllMcpServers({ cwd, logger, toolRegistry });
   if (result.serverCount === 0) {
-    renderText("No MCP servers configured. Add .codeagent/mcp.json — see docs/25.");
+    renderText("No MCP servers configured. Add .khanagent/mcp.json — see docs/25.");
     await closeAllMcpClients(result.clients);
     return;
   }
@@ -360,7 +360,7 @@ async function quotaCommand({ setArgs }) {
     const [provider, limitStr] = setArgs;
     const limit = Number(limitStr);
     if (!provider || Number.isNaN(limit)) {
-      renderError("Usage: codeagent quota set <provider> <limitUSD>");
+      renderError("Usage: khanagent quota set <provider> <limitUSD>");
       process.exitCode = 1;
       return;
     }
@@ -371,7 +371,7 @@ async function quotaCommand({ setArgs }) {
   const quotas = await usageTracker.getQuotas();
   const providers = Object.keys(quotas);
   if (providers.length === 0) {
-    renderText("No quotas configured. Set one with: codeagent quota set <provider> <limitUSD>");
+    renderText("No quotas configured. Set one with: khanagent quota set <provider> <limitUSD>");
     return;
   }
   for (const provider of providers) {
@@ -391,7 +391,7 @@ function hooksCommand({ cwd }) {
   }
   const events = Object.keys(hooksConfig.hooks || {});
   if (events.length === 0) {
-    renderText("No hooks configured. Add .codeagent/hooks.json to define some — see docs/17.");
+    renderText("No hooks configured. Add .khanagent/hooks.json to define some — see docs/17.");
     return;
   }
   for (const event of events) {
@@ -406,7 +406,7 @@ function providersCommand({ config }) {
   const configured = config.providers || {};
   const names = Object.keys(configured);
   if (names.length === 0) {
-    renderText('No providers configured yet. Run "codeagent setup" to add one.');
+    renderText('No providers configured yet. Run "khanagent setup" to add one.');
     return;
   }
   for (const name of names) {
@@ -416,7 +416,7 @@ function providersCommand({ config }) {
     renderText(`${marker}${name}  model=${entry.model || "(default)"}  key=${keySource}`);
   }
   renderText(
-    '\n(* = active)  Run "codeagent use <provider> [model]" to switch, or "codeagent models <provider>" to see every model available for one.'
+    '\n(* = active)  Run "khanagent use <provider> [model]" to switch, or "khanagent models <provider>" to see every model available for one.'
   );
 }
 
@@ -424,7 +424,7 @@ async function useCommand(providerArg, modelArg, { homedir } = {}) {
   const configured = listConfiguredProviders({ homedir });
   const existing = configured[providerArg];
   if (!existing) {
-    renderError(`"${providerArg}" is not configured yet. Run "codeagent setup" to add it first.`);
+    renderError(`"${providerArg}" is not configured yet. Run "khanagent setup" to add it first.`);
     process.exitCode = 1;
     return;
   }
@@ -441,7 +441,7 @@ async function systemPromptCommand(action, text, { homedir } = {}) {
   if (effectiveAction === "show") {
     const config = loadConfig({}, { cwd: process.cwd(), homedir });
     if (!config.adminSystemPrompt) {
-      renderText('No admin system prompt set. Run: codeagent system-prompt set "<your instruction>"');
+      renderText('No admin system prompt set. Run: khanagent system-prompt set "<your instruction>"');
       return;
     }
     renderText(config.adminSystemPrompt);
@@ -449,7 +449,7 @@ async function systemPromptCommand(action, text, { homedir } = {}) {
   }
   if (effectiveAction === "set") {
     if (!text || !text.trim()) {
-      renderError('Usage: codeagent system-prompt set "<your instruction>"');
+      renderError('Usage: khanagent system-prompt set "<your instruction>"');
       process.exitCode = 1;
       return;
     }
@@ -517,9 +517,9 @@ export function shouldRequireFolderTrust(argv) {
 async function promptFolderTrust(cwd) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   try {
-    renderText(`This folder hasn't been used with codeagent before:\n  ${cwd}\n`);
+    renderText(`This folder hasn't been used with khanagent before:\n  ${cwd}\n`);
     renderText(
-      "codeagent will be able to read files here, and — after your explicit confirmation on each destructive action (see --yolo) — write files and run shell commands within it.\n"
+      "khanagent will be able to read files here, and — after your explicit confirmation on each destructive action (see --yolo) — write files and run shell commands within it.\n"
     );
     const answer = await rl.question("Trust this folder and continue? (y/n): ");
     return answer.trim().toLowerCase() === "y";
@@ -544,7 +544,7 @@ export async function run(argv) {
       // actually help (validate to see what's wrong, setup to start
       // fresh), instead of an uncaught stack trace.
       renderError(err.message);
-      renderText('\nRun "codeagent config validate" for details, or "codeagent setup" to reconfigure from scratch.');
+      renderText('\nRun "khanagent config validate" for details, or "khanagent setup" to reconfigure from scratch.');
       process.exitCode = 1;
       return;
     }
@@ -577,14 +577,14 @@ export async function run(argv) {
 
   const program = new Command();
   program
-    .name("codeagent")
+    .name("khanagent")
     .description("A terminal-native AI coding agent — describe a goal, watch it build.")
     .argument("[request]", "One-shot request; omit to start an interactive session")
     .option("--resume <id>", "Resume a saved session ('last' for most recent)")
     .option("--yolo", "Skip destructive-action confirmations for this run")
     .option("--plan", "Plan mode: describe destructive actions instead of performing them (docs/20)")
     .option("--autonomous", "Manus-inspired workflow: mandatory planning, plan recitation on long turns, self-verification before finishing, no confirmation prompts (implies --yolo). Sandboxing and allowedWritePaths are unchanged (docs/31)")
-    .option("--trust", "Trust the current folder for codeagent, without the first-time confirmation prompt (for CI/scripts/Docker; docs/30)")
+    .option("--trust", "Trust the current folder for khanagent, without the first-time confirmation prompt (for CI/scripts/Docker; docs/30)")
     .option("--model <name>", "Override the configured model")
     .option("--provider <name>", "Override the configured provider");
 
@@ -624,7 +624,7 @@ export async function run(argv) {
 
   configCmd
     .command("set <key> <value>")
-    .description("Set one config value in ~/.codeagentrc — see docs/27 for settable keys")
+    .description("Set one config value in ~/.khanagentrc — see docs/27 for settable keys")
     .action((key, value) => {
       try {
         const coerced = setConfigValue(key, value);
@@ -650,21 +650,21 @@ export async function run(argv) {
 
   program
     .command("permissions")
-    .description("List permission rules configured for this project (.codeagent/permissions.json)")
+    .description("List permission rules configured for this project (.khanagent/permissions.json)")
     .action(() => {
       permissionsCommand({ cwd: process.cwd() });
     });
 
   program
     .command("skills")
-    .description("List skills discovered in .codeagent/skills/")
+    .description("List skills discovered in .khanagent/skills/")
     .action(() => {
       skillsCommand({ cwd: process.cwd() });
     });
 
   program
     .command("subagents")
-    .description("List subagents discovered in .codeagent/agents/")
+    .description("List subagents discovered in .khanagent/agents/")
     .action(() => {
       subagentsCommand({ cwd: process.cwd() });
     });
@@ -678,21 +678,21 @@ export async function run(argv) {
 
   program
     .command("commands")
-    .description("List available slash commands (built-in and custom, from .codeagent/commands/)")
+    .description("List available slash commands (built-in and custom, from .khanagent/commands/)")
     .action(() => {
       commandsCommand({ cwd: process.cwd() });
     });
 
   program
     .command("mcp")
-    .description("Connect to configured MCP servers (.codeagent/mcp.json) and list the tools they contribute")
+    .description("Connect to configured MCP servers (.khanagent/mcp.json) and list the tools they contribute")
     .action(async () => {
       await mcpCommand({ cwd: process.cwd() });
     });
 
   const trustCmd = program
     .command("trust")
-    .description("Manage which folders codeagent is trusted to work in (docs/30)");
+    .description("Manage which folders khanagent is trusted to work in (docs/30)");
 
   trustCmd
     .command("list")
@@ -746,7 +746,7 @@ export async function run(argv) {
 
   program
     .command("hooks")
-    .description("List hooks configured for this project (.codeagent/hooks.json)")
+    .description("List hooks configured for this project (.khanagent/hooks.json)")
     .action(() => {
       hooksCommand({ cwd: process.cwd() });
     });
@@ -766,7 +766,7 @@ export async function run(argv) {
 
   program
     .command("use <provider> [model]")
-    .description("Switch the active provider/model (persists in ~/.codeagentrc; history carries over)")
+    .description("Switch the active provider/model (persists in ~/.khanagentrc; history carries over)")
     .action(async (providerArg, modelArg) => {
       await useCommand(providerArg, modelArg, {});
     });
@@ -846,7 +846,7 @@ export async function run(argv) {
       const key = await resolveApiKey({ provider: config.provider, apiKeyEnvVar: config.apiKeyEnvVar, logger });
       if (!key) {
         renderError(
-          `No API key found for ${config.provider}. Set ${config.apiKeyEnvVar} in your shell, or run "codeagent setup" to save one.`
+          `No API key found for ${config.provider}. Set ${config.apiKeyEnvVar} in your shell, or run "khanagent setup" to save one.`
         );
         process.exitCode = 1;
         return;

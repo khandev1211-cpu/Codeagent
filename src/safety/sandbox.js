@@ -8,7 +8,7 @@ const SANDBOX_EXEC_BIN = "/usr/bin/sandbox-exec";
  * Addresses the security gap flagged in PLAN.md / the run_bash sandboxing
  * item: run_bash previously spawned commands directly against the host
  * with no isolation beyond a timeout — full read/write access to whatever
- * the OS user running codeagent could touch, "always destructive" in name
+ * the OS user running khanagent could touch, "always destructive" in name
  * only. This module confines what a shell command can *write to* the same
  * way write_file/edit_file already are (src/tools/pathGuard.js) — reads
  * remain unrestricted (many legitimate commands need to read system

@@ -11,7 +11,7 @@ Given the extensibility design (doc 11) — new tools/providers/config options a
 
 ## Changelog
 
-`CHANGELOG.md` follows Keep a Changelog conventions: an `Unreleased` section accumulates entries as PRs land, moved to a dated version section at release time. Every entry is user-facing language ("what changed for someone using codeagent"), not a raw commit-message dump.
+`CHANGELOG.md` follows Keep a Changelog conventions: an `Unreleased` section accumulates entries as PRs land, moved to a dated version section at release time. Every entry is user-facing language ("what changed for someone using khanagent"), not a raw commit-message dump.
 
 ## Pre-publish checklist (enforced by `prepublishOnly`, doc 03, plus manual steps from doc 12)
 

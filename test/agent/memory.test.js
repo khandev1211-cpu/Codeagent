@@ -9,8 +9,8 @@ describe("loadMemory", () => {
   let homedir;
 
   beforeEach(() => {
-    cwd = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-project-"));
-    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-home-"));
+    cwd = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-project-"));
+    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-home-"));
   });
 
   afterEach(() => {
@@ -30,17 +30,17 @@ describe("loadMemory", () => {
     expect(result.global).toBeNull();
   });
 
-  it("loads a global AGENTS.md at ~/.codeagent/AGENTS.md", async () => {
-    fs.mkdirSync(path.join(homedir, ".codeagent"), { recursive: true });
-    fs.writeFileSync(path.join(homedir, ".codeagent", "AGENTS.md"), "I prefer concise commit messages.");
+  it("loads a global AGENTS.md at ~/.khanagent/AGENTS.md", async () => {
+    fs.mkdirSync(path.join(homedir, ".khanagent"), { recursive: true });
+    fs.writeFileSync(path.join(homedir, ".khanagent", "AGENTS.md"), "I prefer concise commit messages.");
     const result = await loadMemory({ cwd, homedir });
     expect(result.global).toBe("I prefer concise commit messages.");
     expect(result.project).toBeNull();
   });
 
   it("loads both levels independently when both exist", async () => {
-    fs.mkdirSync(path.join(homedir, ".codeagent"), { recursive: true });
-    fs.writeFileSync(path.join(homedir, ".codeagent", "AGENTS.md"), "global instructions");
+    fs.mkdirSync(path.join(homedir, ".khanagent"), { recursive: true });
+    fs.writeFileSync(path.join(homedir, ".khanagent", "AGENTS.md"), "global instructions");
     fs.writeFileSync(path.join(cwd, "AGENTS.md"), "project instructions");
     const result = await loadMemory({ cwd, homedir });
     expect(result.global).toBe("global instructions");

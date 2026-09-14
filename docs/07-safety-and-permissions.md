@@ -21,7 +21,7 @@ When a destructive tool call reaches the Safety Layer:
 
 ## `--yolo` bypass (`src/safety/yolo.js`)
 
-- Explicit, opt-in, per-invocation flag (`codeagent --yolo`) or an explicit config setting (never a default).
+- Explicit, opt-in, per-invocation flag (`khanagent --yolo`) or an explicit config setting (never a default).
 - When active, all destructive calls skip the interactive prompt and execute directly.
 - Every bypassed confirmation is still logged (what tool, what input, timestamp) so there's an audit trail even when no human was asked in the moment — this matters for debugging "what did the agent actually do" after an unattended `--yolo` run, e.g. in CI.
 - `--yolo` does not disable the Diff Tracker or undo capability — bypassing confirmation doesn't mean bypassing recoverability.

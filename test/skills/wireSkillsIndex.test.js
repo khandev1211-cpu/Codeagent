@@ -4,7 +4,7 @@ import { SkillRegistry } from "../../src/skills/registry.js";
 import { ToolRegistry } from "../../src/tools/registry.js";
 
 const SAMPLE_SKILLS = [
-  { name: "commit-message", description: "Write a Conventional Commits message.", allowedTools: null, path: ".codeagent/skills/commit-message/SKILL.md" },
+  { name: "commit-message", description: "Write a Conventional Commits message.", allowedTools: null, path: ".khanagent/skills/commit-message/SKILL.md" },
 ];
 
 describe("wireSkillsIndex", () => {

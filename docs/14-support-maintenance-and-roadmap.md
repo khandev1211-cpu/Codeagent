@@ -9,7 +9,7 @@
 ## Issue templates (recommended structure)
 
 **Bug report:**
-- codeagent version, Node version, OS
+- khanagent version, Node version, OS
 - Command run
 - Expected vs. actual behavior
 - Relevant session log excerpt if available (with API key redaction reminder, doc 15, in the template itself so reporters don't accidentally paste a key)

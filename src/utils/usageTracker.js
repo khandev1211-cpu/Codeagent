@@ -3,17 +3,17 @@ import os from "node:os";
 import path from "node:path";
 
 /**
- * Global storage (`~/.codeagent/usage/`), same pattern SessionStore
+ * Global storage (`~/.khanagent/usage/`), same pattern SessionStore
  * already uses (`docs/08`): SessionStore's directory is global too
- * (`~/.codeagent/sessions/`), filtered by a `projectRoot` field on each
+ * (`~/.khanagent/sessions/`), filtered by a `projectRoot` field on each
  * record, not one directory per project. Usage tracking follows the same
  * shape deliberately — a person's total spend across every project they
- * use codeagent on is at least as useful to see as one project's spend,
+ * use khanagent on is at least as useful to see as one project's spend,
  * and a single global log makes "total spend this month" a single read
  * instead of a scan across every project's own storage location.
  */
 function usageDir(homedir = os.homedir()) {
-  return path.join(homedir, ".codeagent", "usage");
+  return path.join(homedir, ".khanagent", "usage");
 }
 
 function logPath(homedir) {
@@ -27,7 +27,7 @@ function quotasPath(homedir) {
 /**
  * Approximate list-price $/million-tokens, as of a fixed date — pricing
  * WILL drift out of date; every consumer of this table (getCosts, the
- * `codeagent usage` command) surfaces `pricingAsOf` alongside any dollar
+ * `khanagent usage` command) surfaces `pricingAsOf` alongside any dollar
  * figure specifically so the output never presents a stale estimate with
  * false precision. `ollama` is intentionally absent (local inference,
  * $0 by construction, handled as a special case in estimateCost rather
@@ -81,7 +81,7 @@ function withinRange(record, range, now) {
 /**
  * Records one line per completed turn to an append-only JSONL log —
  * chosen specifically because it's the simplest format that's safe under
- * concurrent sessions (two codeagent processes appending at once can't
+ * concurrent sessions (two khanagent processes appending at once can't
  * corrupt each other's records the way a single read-modify-write JSON
  * file could), and every provider adapter already returns exactly the
  * `{inputTokens, outputTokens}` shape a record needs (`docs/06`) — this

@@ -9,7 +9,7 @@ describe("DiffTracker undo", () => {
   let tmpDir;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "codeagent-test-"));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "khanagent-test-"));
   });
 
   afterEach(async () => {

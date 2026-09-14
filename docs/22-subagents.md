@@ -26,9 +26,9 @@ A subagent definition's frontmatter can narrow this further with a `tools:` fiel
 
 ## Filesystem-based definitions
 
-`.codeagent/agents/<name>.md`, same frontmatter+body shape as Skills (`name`, `description`, optional `tools`, then free-form body as the subagent's system prompt) — for the same consistency-with-Phase-4 reason PLAN.md names, and because it reuses `parseFrontmatter` (`src/skills/frontmatter.js`) as-is rather than writing a second parser for an identical format.
+`.khanagent/agents/<name>.md`, same frontmatter+body shape as Skills (`name`, `description`, optional `tools`, then free-form body as the subagent's system prompt) — for the same consistency-with-Phase-4 reason PLAN.md names, and because it reuses `parseFrontmatter` (`src/skills/frontmatter.js`) as-is rather than writing a second parser for an identical format.
 
-Discovery mirrors `discoverSkills`: project-scoped only for v1 (`.codeagent/agents/`, not `~/.codeagent/agents/`), a malformed or incomplete definition is skipped with a warning rather than crashing startup, same reasoning as Skills — one broken subagent definition must not take down the whole session.
+Discovery mirrors `discoverSkills`: project-scoped only for v1 (`.khanagent/agents/`, not `~/.khanagent/agents/`), a malformed or incomplete definition is skipped with a warning rather than crashing startup, same reasoning as Skills — one broken subagent definition must not take down the whole session.
 
 ## Synchronous, not background
 
@@ -46,6 +46,6 @@ Subagent definitions get a full inline index (name + description) in the system 
 
 - No recursive subagents (a subagent's tool registry never includes `run_subagent`) — see "tool-subset restriction" above.
 - No background/async execution — synchronous only.
-- No personal (`~/.codeagent/agents`) or plugin-bundled subagent definitions — deferred to the Plugins phase, same as Skills.
+- No personal (`~/.khanagent/agents`) or plugin-bundled subagent definitions — deferred to the Plugins phase, same as Skills.
 - No automatic delegation — the model must explicitly call `run_subagent`.
 - `docs/01`'s "not a multi-agent framework" non-goal needs a follow-up pass once this ships, so it stops contradicting a shipped feature — tracked in PLAN.md, not done silently as part of this doc.

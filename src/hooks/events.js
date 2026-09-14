@@ -1,5 +1,5 @@
 /**
- * Hook lifecycle events codeagent actually has natural seams for today
+ * Hook lifecycle events khanagent actually has natural seams for today
  * (PLAN.md Phase 3 / doc 16). Claude Code has on the order of 30 event
  * types — we start with the four that map directly onto real seams in
  * orchestrator.js and the CLI session lifecycle, and add more only once a

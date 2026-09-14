@@ -1,6 +1,6 @@
 # 31 — Autonomous Mode
 
-Not from `docs/16`'s Tier 1/2/3 audit — a direction chosen after comparing codeagent's interaction model against Manus AI's: mandatory upfront planning, continuous "recitation" of the plan back into context on long tasks, self-verification before declaring done, and a single final summary instead of a back-and-forth. The explicit design constraint for this feature: adopt Manus's *workflow discipline*, not its *safety posture*. Confirmation prompts are what this mode skips — the sandbox (`config.sandboxMode`, docs/15) and `allowedWritePaths` (docs/07/09) are not touched by this feature at all and stay exactly as strict as they already are.
+Not from `docs/16`'s Tier 1/2/3 audit — a direction chosen after comparing khanagent's interaction model against Manus AI's: mandatory upfront planning, continuous "recitation" of the plan back into context on long tasks, self-verification before declaring done, and a single final summary instead of a back-and-forth. The explicit design constraint for this feature: adopt Manus's *workflow discipline*, not its *safety posture*. Confirmation prompts are what this mode skips — the sandbox (`config.sandboxMode`, docs/15) and `allowedWritePaths` (docs/07/09) are not touched by this feature at all and stay exactly as strict as they already are.
 
 ## What Autonomous Mode actually changes
 
@@ -19,7 +19,7 @@ The row that matters most: **confirmation is what's skipped, not the safety mech
 
 ## Enabling it
 
-`--autonomous` (a CLI flag, session-only — does not persist to `~/.codeagentrc` the way `codeagent config set` would) or `config.autonomousMode: boolean` for a standing per-project/global default. Setting `autonomousMode: true` implies the same auto-approve behavior `yolo: true` already provides (reuses `createConfirmer`'s existing yolo branch — no second bypass mechanism written) and additionally changes planning/system-prompt behavior as described below. `--autonomous` on the CLI sets both `config.autonomousMode` and `config.yolo` for that invocation.
+`--autonomous` (a CLI flag, session-only — does not persist to `~/.khanagentrc` the way `khanagent config set` would) or `config.autonomousMode: boolean` for a standing per-project/global default. Setting `autonomousMode: true` implies the same auto-approve behavior `yolo: true` already provides (reuses `createConfirmer`'s existing yolo branch — no second bypass mechanism written) and additionally changes planning/system-prompt behavior as described below. `--autonomous` on the CLI sets both `config.autonomousMode` and `config.yolo` for that invocation.
 
 ## Mandatory planning
 
@@ -41,7 +41,7 @@ No new mechanism needed for this part — it falls out of the two changes above.
 
 ## What this doesn't do (v1)
 
-- **No background/async execution.** Manus's cloud-VM-per-task model runs independently of the user's device; Autonomous Mode is still a normal, synchronous `codeagent` invocation — the terminal is occupied for the duration, same as any other turn. True background execution (start a task, do something else, get notified) is a materially bigger feature (needs a persistent daemon or job queue, a notification mechanism, and answers to what happens if the terminal closes) — worth a separate design pass if genuinely needed, not folded into this one.
+- **No background/async execution.** Manus's cloud-VM-per-task model runs independently of the user's device; Autonomous Mode is still a normal, synchronous `khanagent` invocation — the terminal is occupied for the duration, same as any other turn. True background execution (start a task, do something else, get notified) is a materially bigger feature (needs a persistent daemon or job queue, a notification mechanism, and answers to what happens if the terminal closes) — worth a separate design pass if genuinely needed, not folded into this one.
 - **No multi-agent Planner/Executor/Verifier split.** Autonomous Mode still runs through the single `Orchestrator` loop — planning is a lightweight side-call (`planTurn()`), not a separate agent role with its own state. Subagents (docs/22) already provide scoped delegation for genuinely separable subtasks; a rigid three-role pipeline for every turn would be more architecture than this feature needs.
-- **No hosted cloud sandbox.** Execution stays exactly where it already runs — the user's own machine, through the existing `bubblewrap`/`sandbox-exec` sandbox (docs/15). codeagent's identity is local-first and BYO-key; adopting Manus's cloud-VM-per-task model would change what the product fundamentally is, not just how it behaves.
+- **No hosted cloud sandbox.** Execution stays exactly where it already runs — the user's own machine, through the existing `bubblewrap`/`sandbox-exec` sandbox (docs/15). khanagent's identity is local-first and BYO-key; adopting Manus's cloud-VM-per-task model would change what the product fundamentally is, not just how it behaves.
 - **No removal of the sandbox or `allowedWritePaths` in this mode, ever.** Explicitly restated because it's the one thing this feature must never quietly regress: Autonomous Mode changes the *conversation*, not the *machine-level blast radius* of what a destructive call can reach.

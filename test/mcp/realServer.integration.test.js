@@ -71,7 +71,7 @@ describe("MCP client (real subprocess, real SDK)", () => {
   });
 });
 
-describe("connectAllMcpServers (real subprocess, real SDK, via .codeagent/mcp.json)", () => {
+describe("connectAllMcpServers (real subprocess, real SDK, via .khanagent/mcp.json)", () => {
   let tmpDir;
   let clients = [];
 
@@ -82,10 +82,10 @@ describe("connectAllMcpServers (real subprocess, real SDK, via .codeagent/mcp.js
   });
 
   it("discovers a real server from mcp.json, connects, and registers its real tools into the ToolRegistry", async () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-mcp-e2e-"));
-    fs.mkdirSync(path.join(tmpDir, ".codeagent"));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-mcp-e2e-"));
+    fs.mkdirSync(path.join(tmpDir, ".khanagent"));
     fs.writeFileSync(
-      path.join(tmpDir, ".codeagent", "mcp.json"),
+      path.join(tmpDir, ".khanagent", "mcp.json"),
       JSON.stringify({ mcpServers: { fixture: { command: "node", args: [FIXTURE_SERVER] } } })
     );
 
@@ -103,10 +103,10 @@ describe("connectAllMcpServers (real subprocess, real SDK, via .codeagent/mcp.js
   });
 
   it("a real server that fails to spawn is a non-fatal error, not a thrown exception", async () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-mcp-e2e-fail-"));
-    fs.mkdirSync(path.join(tmpDir, ".codeagent"));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-mcp-e2e-fail-"));
+    fs.mkdirSync(path.join(tmpDir, ".khanagent"));
     fs.writeFileSync(
-      path.join(tmpDir, ".codeagent", "mcp.json"),
+      path.join(tmpDir, ".khanagent", "mcp.json"),
       JSON.stringify({ mcpServers: { nonexistent: { command: "this-command-does-not-exist-anywhere" } } })
     );
 

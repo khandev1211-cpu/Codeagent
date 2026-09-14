@@ -38,7 +38,7 @@ describe("ConfigManager (interactive)", () => {
 
   function seedConfig(overrides = {}) {
     fs.writeFileSync(
-      path.join(homedir, ".codeagentrc"),
+      path.join(homedir, ".khanagentrc"),
       JSON.stringify({
         providers: { anthropic: { model: "claude-sonnet-4-6", apiKeyEnvVar: "ANTHROPIC_API_KEY" } },
         provider: "anthropic",
@@ -61,7 +61,7 @@ describe("ConfigManager (interactive)", () => {
   });
 
   it("changing an enum field (skillsIndexMode) persists the new value", async () => {
-    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-cm-"));
+    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-cm-"));
     seedConfig();
     withFakeInput(["2", "full", DONE]); // menu item 2, new value "full", then Done
 
@@ -73,7 +73,7 @@ describe("ConfigManager (interactive)", () => {
   });
 
   it("toggling a boolean field (planMode) via y/n persists true", async () => {
-    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-cm-"));
+    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-cm-"));
     seedConfig();
     withFakeInput(["4", "y", DONE]); // menu item 4 = planMode, "y", Done
 
@@ -85,7 +85,7 @@ describe("ConfigManager (interactive)", () => {
   });
 
   it("an invalid value shows a warning and does not crash the loop — subsequent edits still work", async () => {
-    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-cm-"));
+    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-cm-"));
     seedConfig();
     withFakeInput(["2", "nonsense", "2", "full", DONE]); // bad value, then retry with a good one
 
@@ -97,7 +97,7 @@ describe("ConfigManager (interactive)", () => {
   });
 
   it("an empty answer leaves the field unchanged", async () => {
-    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-cm-"));
+    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-cm-"));
     seedConfig();
     withFakeInput(["7", "", DONE]); // menu item 7 = maxIterationsPerTurn, blank, Done
 
@@ -109,7 +109,7 @@ describe("ConfigManager (interactive)", () => {
   });
 
   it("selecting 'Done' immediately exits without writing anything new", async () => {
-    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-cm-"));
+    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-cm-"));
     seedConfig();
     withFakeInput([DONE]);
 
@@ -118,7 +118,7 @@ describe("ConfigManager (interactive)", () => {
   });
 
   it("an out-of-range menu number re-prompts (shows the menu again) rather than crashing or silently hanging", async () => {
-    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-cm-"));
+    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-cm-"));
     seedConfig();
     withFakeInput(["999", DONE]); // out-of-range, then Done on the re-prompt
 
@@ -127,7 +127,7 @@ describe("ConfigManager (interactive)", () => {
   });
 
   it("array field (allowedWritePaths) accepts a comma-separated value", async () => {
-    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-cm-"));
+    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-cm-"));
     seedConfig();
     withFakeInput(["9", "., ../shared", DONE]); // menu item 9 = allowedWritePaths
 

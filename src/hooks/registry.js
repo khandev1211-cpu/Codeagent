@@ -4,7 +4,7 @@ import { loadHooksConfig } from "./loadHooksConfig.js";
 
 /**
  * Registers and runs hooks for lifecycle events (doc 16 / PLAN.md Phase 3).
- * Project-scoped only for v1 — loads .codeagent/hooks.json once at
+ * Project-scoped only for v1 — loads .khanagent/hooks.json once at
  * construction; pass `hooksConfig` directly to skip disk I/O (tests, or a
  * caller that's already loaded/merged config elsewhere).
  */

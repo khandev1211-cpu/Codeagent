@@ -1,7 +1,7 @@
 import { discoverSlashCommands } from "./discoverSlashCommands.js";
 
 // Built-in commands are handled specially by resolveSlashCommand — never
-// overridable by a custom .codeagent/commands/<name>.md with the same
+// overridable by a custom .khanagent/commands/<name>.md with the same
 // name, same reasoning `run_subagent`/`skill_info` tool names aren't
 // shadowable by a project's own tool definitions: a fixed vocabulary the
 // user can rely on regardless of what a given project has configured.
@@ -76,7 +76,7 @@ export function formatHelp(commandRegistry) {
   ];
   const custom = commandRegistry?.list() || [];
   if (custom.length > 0) {
-    lines.push("", "Custom commands (.codeagent/commands/):");
+    lines.push("", "Custom commands (.khanagent/commands/):");
     for (const c of custom) lines.push(`  /${c.name}   ${c.description}`);
   }
   return lines.join("\n");

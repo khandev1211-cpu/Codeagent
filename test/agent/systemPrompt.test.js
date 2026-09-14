@@ -102,7 +102,7 @@ describe("buildSystemPrompt", () => {
     const skillCount = 20;
     const fullIndex = Array.from(
       { length: skillCount },
-      (_, i) => `- **skill-${i}**: A reasonably detailed description of what skill ${i} does and when to use it. (read \`.codeagent/skills/skill-${i}/SKILL.md\` for full instructions)`
+      (_, i) => `- **skill-${i}**: A reasonably detailed description of what skill ${i} does and when to use it. (read \`.khanagent/skills/skill-${i}/SKILL.md\` for full instructions)`
     ).join("\n");
     const compactIndex = Array.from({ length: skillCount }, (_, i) => `skill-${i}`).join(", ");
 

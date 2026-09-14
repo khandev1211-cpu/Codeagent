@@ -37,7 +37,7 @@ describe("UsageTracker", () => {
   let tracker;
 
   beforeEach(() => {
-    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-usage-"));
+    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-usage-"));
     tracker = new UsageTracker({ homedir });
   });
 
@@ -85,7 +85,7 @@ describe("UsageTracker", () => {
 
   it("filters out records outside the requested range", async () => {
     // Manually inject an old record by writing the log file directly.
-    const usageDir = path.join(homedir, ".codeagent", "usage");
+    const usageDir = path.join(homedir, ".khanagent", "usage");
     fs.mkdirSync(usageDir, { recursive: true });
     const oldRecord = { timestamp: "2020-01-01T00:00:00.000Z", projectRoot: "/p", provider: "anthropic", model: "claude-sonnet-4-6", inputTokens: 100, outputTokens: 50 };
     fs.writeFileSync(path.join(usageDir, "log.jsonl"), JSON.stringify(oldRecord) + "\n");
@@ -104,7 +104,7 @@ describe("UsageTracker", () => {
   });
 
   it("skips a corrupted line in the log without losing the other lines", async () => {
-    const usageDir = path.join(homedir, ".codeagent", "usage");
+    const usageDir = path.join(homedir, ".khanagent", "usage");
     fs.mkdirSync(usageDir, { recursive: true });
     const goodRecord = { timestamp: new Date().toISOString(), projectRoot: "/p", provider: "anthropic", model: "claude-sonnet-4-6", inputTokens: 10, outputTokens: 5 };
     fs.writeFileSync(path.join(usageDir, "log.jsonl"), "not valid json\n" + JSON.stringify(goodRecord) + "\n");

@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { SkillRegistry } from "../../src/skills/registry.js";
 
 const SAMPLE_SKILLS = [
-  { name: "commit-message", description: "Write a Conventional Commits message.", allowedTools: ["run_bash"], path: ".codeagent/skills/commit-message/SKILL.md" },
-  { name: "code-review", description: "Review a diff for common issues.", allowedTools: null, path: ".codeagent/skills/code-review/SKILL.md" },
+  { name: "commit-message", description: "Write a Conventional Commits message.", allowedTools: ["run_bash"], path: ".khanagent/skills/commit-message/SKILL.md" },
+  { name: "code-review", description: "Review a diff for common issues.", allowedTools: null, path: ".khanagent/skills/code-review/SKILL.md" },
 ];
 
 describe("SkillRegistry", () => {
@@ -30,14 +30,14 @@ describe("SkillRegistry", () => {
     const index = registry.formatIndexForPrompt();
     expect(index).toContain("commit-message");
     expect(index).toContain("Write a Conventional Commits message.");
-    expect(index).toContain(".codeagent/skills/commit-message/SKILL.md");
+    expect(index).toContain(".khanagent/skills/commit-message/SKILL.md");
     expect(index).toContain("code-review");
   });
 
   it("constructing without an explicit skills array discovers from disk (falls back to discoverSkills)", () => {
-    // No .codeagent/skills in the current working directory during tests
+    // No .khanagent/skills in the current working directory during tests
     // -> should resolve to an empty list without throwing.
-    const registry = new SkillRegistry({ cwd: "/tmp/codeagent-nonexistent-skills-cwd" });
+    const registry = new SkillRegistry({ cwd: "/tmp/khanagent-nonexistent-skills-cwd" });
     expect(registry.list()).toEqual([]);
   });
 
@@ -51,7 +51,7 @@ describe("SkillRegistry", () => {
     const compact = registry.formatCompactIndexForPrompt();
     expect(compact).toBe("commit-message, code-review");
     expect(compact).not.toContain("Write a Conventional Commits message.");
-    expect(compact).not.toContain(".codeagent/skills");
+    expect(compact).not.toContain(".khanagent/skills");
   });
 
   it("formatCompactIndexForPrompt is substantially cheaper than the full index", () => {
@@ -62,7 +62,7 @@ describe("SkillRegistry", () => {
   it("describe() returns description and path for known names", () => {
     const registry = new SkillRegistry({ skills: SAMPLE_SKILLS });
     expect(registry.describe(["commit-message"])).toEqual([
-      { name: "commit-message", found: true, description: "Write a Conventional Commits message.", path: ".codeagent/skills/commit-message/SKILL.md" },
+      { name: "commit-message", found: true, description: "Write a Conventional Commits message.", path: ".khanagent/skills/commit-message/SKILL.md" },
     ]);
   });
 

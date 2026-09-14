@@ -5,8 +5,8 @@ import { parseFrontmatter } from "./frontmatter.js";
 const REQUIRED_FIELDS = ["name", "description"];
 
 /**
- * Discovers skills under `.codeagent/skills/<name>/SKILL.md` — project-
- * scoped only for v1. Personal (`~/.codeagent/skills`) and plugin-bundled
+ * Discovers skills under `.khanagent/skills/<name>/SKILL.md` — project-
+ * scoped only for v1. Personal (`~/.khanagent/skills`) and plugin-bundled
  * skills are deferred to the Plugins phase (docs/16, PLAN.md Phase 8),
  * same reasoning as hooks.json (docs/17): the multi-scope loading story
  * belongs there, not bolted on early to something not yet proven.
@@ -23,7 +23,7 @@ const REQUIRED_FIELDS = ["name", "description"];
  * the existing read_file tool, only if it decides that skill is relevant.
  */
 export function discoverSkills({ cwd = process.cwd(), logger } = {}) {
-  const skillsDir = path.join(cwd, ".codeagent", "skills");
+  const skillsDir = path.join(cwd, ".khanagent", "skills");
   if (!fs.existsSync(skillsDir)) return [];
 
   const entries = fs.readdirSync(skillsDir, { withFileTypes: true }).filter((e) => e.isDirectory());

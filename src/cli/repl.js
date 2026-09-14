@@ -56,7 +56,7 @@ export async function startRepl({
   // starts actively consuming `process.stdin` the moment it's constructed;
   // every `await` above (MCP connection, project context, memory files)
   // takes real time, and piped/non-TTY input (a test harness, CI, someone
-  // scripting `echo "..." | codeagent`) can arrive and be silently
+  // scripting `echo "..." | khanagent`) can arrive and be silently
   // consumed by the interface during that window, before any
   // `rl.question()` call is pending to actually receive it — losing the
   // first line entirely. Real interactive typing at a TTY never triggers
@@ -65,7 +65,7 @@ export async function startRepl({
   // scenario surfaced it.
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
-  renderText(`codeagent session ${session.id} — ${session.provider}/${session.model}`);
+  renderText(`khanagent session ${session.id} — ${session.provider}/${session.model}`);
   renderText("Type your request, or Ctrl+C to exit.\n");
 
   let interrupted = false;

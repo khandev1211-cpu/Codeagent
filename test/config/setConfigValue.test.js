@@ -53,10 +53,10 @@ describe("coerceConfigValue", () => {
   });
 
   it("redirects provider/model/apiKeyEnvVar/providers/adminSystemPrompt to their own commands instead of coercing", () => {
-    expect(() => coerceConfigValue("provider", "mistral")).toThrow(/codeagent use/);
-    expect(() => coerceConfigValue("model", "x")).toThrow(/codeagent use/);
-    expect(() => coerceConfigValue("apiKeyEnvVar", "X")).toThrow(/codeagent setup/);
-    expect(() => coerceConfigValue("providers", "{}")).toThrow(/codeagent setup/);
+    expect(() => coerceConfigValue("provider", "mistral")).toThrow(/khanagent use/);
+    expect(() => coerceConfigValue("model", "x")).toThrow(/khanagent use/);
+    expect(() => coerceConfigValue("apiKeyEnvVar", "X")).toThrow(/khanagent setup/);
+    expect(() => coerceConfigValue("providers", "{}")).toThrow(/khanagent setup/);
     expect(() => coerceConfigValue("adminSystemPrompt", "text")).toThrow(/system-prompt set/);
   });
 });
@@ -65,14 +65,14 @@ describe("setConfigValue", () => {
   let homedir;
 
   beforeEach(() => {
-    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-config-home-"));
+    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-config-home-"));
   });
 
   afterEach(() => {
     fs.rmSync(homedir, { recursive: true, force: true });
   });
 
-  it("persists a valid value to ~/.codeagentrc, readable back via loadConfig", () => {
+  it("persists a valid value to ~/.khanagentrc, readable back via loadConfig", () => {
     setConfigValue("sandboxMode", "off", { homedir });
     const config = loadConfig({}, { homedir });
     expect(config.sandboxMode).toBe("off");
@@ -83,7 +83,7 @@ describe("setConfigValue", () => {
   });
 
   it("does not write anything to disk when the value is invalid", () => {
-    const rcPath = path.join(homedir, ".codeagentrc");
+    const rcPath = path.join(homedir, ".khanagentrc");
     expect(() => setConfigValue("skillsIndexMode", "nonsense", { homedir })).toThrow();
     expect(fs.existsSync(rcPath)).toBe(false);
   });

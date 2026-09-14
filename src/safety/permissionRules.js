@@ -33,14 +33,14 @@ const RulesFileSchema = z.object({
 });
 
 /**
- * Loads .codeagent/permissions.json — project-scoped only for v1, same
+ * Loads .khanagent/permissions.json — project-scoped only for v1, same
  * convention as hooks.json (docs/17) and the same reasoning: personal/
  * plugin-scoped rules are a Plugins-phase concern, not bolted on early.
  * Missing file -> no rules, not an error; permission rules are entirely
  * opt-in.
  */
 export function loadPermissionRules({ cwd = process.cwd() } = {}) {
-  const filePath = path.join(cwd, ".codeagent", "permissions.json");
+  const filePath = path.join(cwd, ".khanagent", "permissions.json");
   if (!fs.existsSync(filePath)) {
     return { rules: [] };
   }

@@ -6,13 +6,13 @@
 
 ## Why two front ends, not one
 
-Ink needs a real terminal on both ends: raw-mode keyboard capture needs `stdin` to be a TTY, redrawing regions of the screen needs `stdout` to be one. Piped input, CI, and scripted usage don't have either — and codeagent's own stated design goal is "works in CI as well as interactively" (`docs/10`). So `cli/index.js`'s `interactive()` picks between them:
+Ink needs a real terminal on both ends: raw-mode keyboard capture needs `stdin` to be a TTY, redrawing regions of the screen needs `stdout` to be one. Piped input, CI, and scripted usage don't have either — and khanagent's own stated design goal is "works in CI as well as interactively" (`docs/10`). So `cli/index.js`'s `interactive()` picks between them:
 
 ```js
-const useTui = process.stdin.isTTY && process.stdout.isTTY && process.env.CODEAGENT_PLAIN_REPL !== "1";
+const useTui = process.stdin.isTTY && process.stdout.isTTY && process.env.KHANAGENT_PLAIN_REPL !== "1";
 ```
 
-`CODEAGENT_PLAIN_REPL=1` is an explicit escape hatch back to the plain REPL even in a real terminal, for anyone who prefers it or hits a terminal-emulator quirk with the richer one. The Ink module is loaded with a dynamic `import()`, not a static one — every one-shot, scripted, or CI invocation of codeagent should never pay the cost of loading React/Ink at all, only sessions that actually reach this branch.
+`KHANAGENT_PLAIN_REPL=1` is an explicit escape hatch back to the plain REPL even in a real terminal, for anyone who prefers it or hits a terminal-emulator quirk with the richer one. The Ink module is loaded with a dynamic `import()`, not a static one — every one-shot, scripted, or CI invocation of khanagent should never pay the cost of loading React/Ink at all, only sessions that actually reach this branch.
 
 ## Components (`src/cli/tui/`)
 

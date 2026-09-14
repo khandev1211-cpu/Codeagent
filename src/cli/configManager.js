@@ -16,7 +16,7 @@ const MENU_ITEMS = [{ key: "provider", label: "Provider & model", delegate: true
 
 /**
  * Every other field goes through the exact same `setConfigValue` the
- * non-interactive `codeagent config set <key> <value>` command uses
+ * non-interactive `khanagent config set <key> <value>` command uses
  * (docs/27) — this menu is a friendlier way to reach the same coercion
  * and validation, not a second implementation of it.
  */
@@ -38,7 +38,7 @@ export class ConfigManager {
   async _loop(rl) {
     while (true) {
       const config = loadConfig({}, { homedir: this.homedir });
-      console.log("\n⚙️  codeagent configuration\n");
+      console.log("\n⚙️  khanagent configuration\n");
       MENU_ITEMS.forEach((item, i) => {
         const current = item.delegate ? `${config.provider} (${config.model})` : JSON.stringify(config[item.key]);
         console.log(`  ${i + 1}. ${item.label}  [current: ${current}]`);

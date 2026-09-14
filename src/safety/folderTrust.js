@@ -8,10 +8,10 @@ import path from "node:path";
  * marker living INSIDE the folder whose trust is in question would be
  * trivially bypassable (a malicious repo could ship a pre-trusted
  * marker file). Same home-directory-namespace convention as
- * `~/.codeagent/sessions/`, `~/.codeagent/usage/`.
+ * `~/.khanagent/sessions/`, `~/.khanagent/usage/`.
  */
 function trustFilePath(homedir = os.homedir()) {
-  return path.join(homedir, ".codeagent", "trustedFolders.json");
+  return path.join(homedir, ".khanagent", "trustedFolders.json");
 }
 
 /**
@@ -57,7 +57,7 @@ export async function isFolderTrusted(targetPath, { homedir = os.homedir() } = {
  * `trust add` command): either this is called after the real prompt
  * returns "yes," or from the `--trust` CLI flag on an actual invocation.
  * A bare "add trust for a path" command would let trust be granted for a
- * folder codeagent was never actually run in, undercutting the point of
+ * folder khanagent was never actually run in, undercutting the point of
  * a gate meant to be a considered, in-the-moment decision.
  */
 export async function trustFolder(targetPath, { homedir = os.homedir() } = {}) {
@@ -81,7 +81,7 @@ export async function revokeAllFolders({ homedir = os.homedir() } = {}) {
   await writeRegistry(homedir, {});
 }
 
-/** Returns `[{ path, trustedAt }]`, sorted most-recently-trusted first — matches `codeagent sessions`'/`codeagent usage`'s existing "newest first" listing convention. */
+/** Returns `[{ path, trustedAt }]`, sorted most-recently-trusted first — matches `khanagent sessions`'/`khanagent usage`'s existing "newest first" listing convention. */
 export async function listTrustedFolders({ homedir = os.homedir() } = {}) {
   const registry = await readRegistry(homedir);
   return Object.entries(registry)
@@ -96,7 +96,7 @@ export async function listTrustedFolders({ homedir = os.homedir() } = {}) {
  * commands (`skills`, `hooks`, etc.) are exempt for the same "visibility
  * before any install machinery" reasoning docs/17/19/22/24/25 already
  * established for those commands individually — gating them would mean
- * `codeagent skills` on an untrusted folder either silently fails to be
+ * `khanagent skills` on an untrusted folder either silently fails to be
  * useful or forces a trust decision before the user has any information
  * to decide with.
  */

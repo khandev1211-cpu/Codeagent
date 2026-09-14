@@ -6,7 +6,7 @@ import crypto from "node:crypto";
 import { DiffTracker } from "./diffTracker.js";
 
 function sessionsDir(homedir = os.homedir()) {
-  return path.join(homedir, ".codeagent", "sessions");
+  return path.join(homedir, ".khanagent", "sessions");
 }
 
 function newSessionId() {

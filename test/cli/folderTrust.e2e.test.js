@@ -33,9 +33,9 @@ describe("Folder Trust gate — real end-to-end via run()", () => {
   let originalStdin;
 
   beforeEach(() => {
-    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-trust-e2e-home-"));
+    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-trust-e2e-home-"));
     fs.writeFileSync(
-      path.join(homedir, ".codeagentrc"),
+      path.join(homedir, ".khanagentrc"),
       JSON.stringify({
         providers: { ollama: { model: "llama3.1", apiKeyEnvVar: "OLLAMA_API_KEY" } },
         provider: "ollama",
@@ -44,7 +44,7 @@ describe("Folder Trust gate — real end-to-end via run()", () => {
         maxIterationsPerTurn: 1,
       })
     );
-    projectDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-trust-e2e-project-"));
+    projectDir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-trust-e2e-project-"));
     originalCwd = process.cwd();
     originalStdin = process.stdin;
     process.chdir(projectDir);
@@ -64,7 +64,7 @@ describe("Folder Trust gate — real end-to-end via run()", () => {
 
   it("declining the prompt does not write a trust entry", async () => {
     withFakeStdin(["n"]);
-    await run(["node", "codeagent", "do something"]);
+    await run(["node", "khanagent", "do something"]);
     expect(await isFolderTrusted(projectDir, { homedir })).toBe(false);
   }, 10_000);
 
@@ -73,20 +73,20 @@ describe("Folder Trust gate — real end-to-end via run()", () => {
     // The subsequent Ollama call fails fast (no local server) — expected
     // and irrelevant to what this test checks; only the trust write,
     // which must have happened before that call, matters here.
-    await run(["node", "codeagent", "do something"]).catch(() => {});
+    await run(["node", "khanagent", "do something"]).catch(() => {});
     expect(await isFolderTrusted(projectDir, { homedir })).toBe(true);
   }, 10_000);
 
   it("--trust auto-trusts without ever reading from stdin", async () => {
     withFakeStdin([]); // immediately-ended stream — a real prompt read would hang/reject on this
-    await run(["node", "codeagent", "--trust", "do something"]).catch(() => {});
+    await run(["node", "khanagent", "--trust", "do something"]).catch(() => {});
     expect(await isFolderTrusted(projectDir, { homedir })).toBe(true);
   }, 10_000);
 
   it("an already-trusted folder does not prompt again on a later invocation", async () => {
     await trustFolder(projectDir, { homedir });
     withFakeStdin([]); // if the gate incorrectly re-fired, this would hang the test until timeout
-    await run(["node", "codeagent", "do something else"]).catch(() => {});
+    await run(["node", "khanagent", "do something else"]).catch(() => {});
     // Reaching this line at all (within the test timeout) proves no
     // second prompt was attempted.
     expect(await isFolderTrusted(projectDir, { homedir })).toBe(true);
@@ -94,7 +94,7 @@ describe("Folder Trust gate — real end-to-end via run()", () => {
 
   it("an exempt command (config) never triggers the gate, even in a brand-new, never-trusted folder", async () => {
     withFakeStdin([]); // would hang if the gate incorrectly fired here
-    await run(["node", "codeagent", "config"]);
+    await run(["node", "khanagent", "config"]);
     expect(await isFolderTrusted(projectDir, { homedir })).toBe(false);
   }, 10_000);
 });

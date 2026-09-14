@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { resolveApiKey } from "../../src/providers/resolveApiKey.js";
 
 describe("resolveApiKey", () => {
-  const ENV_VAR = "CODEAGENT_TEST_RESOLVE_KEY";
+  const ENV_VAR = "KHANAGENT_TEST_RESOLVE_KEY";
 
   afterEach(() => {
     delete process.env[ENV_VAR];
@@ -16,7 +16,7 @@ describe("resolveApiKey", () => {
 
   it("falls back to null when neither env var nor keychain has a value", async () => {
     delete process.env[ENV_VAR];
-    const key = await resolveApiKey({ provider: "codeagent-test-provider-with-no-key", apiKeyEnvVar: ENV_VAR });
+    const key = await resolveApiKey({ provider: "khanagent-test-provider-with-no-key", apiKeyEnvVar: ENV_VAR });
     expect(key).toBeNull();
   });
 
@@ -25,7 +25,7 @@ describe("resolveApiKey", () => {
     // exercises the real KeychainManager code path (not mocked) and
     // confirms a lookup miss resolves to null rather than throwing.
     const key = await resolveApiKey({
-      provider: "codeagent-test-provider-with-no-key",
+      provider: "khanagent-test-provider-with-no-key",
       apiKeyEnvVar: ENV_VAR,
       logger: { warn: () => {}, debug: () => {} },
     });

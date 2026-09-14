@@ -6,7 +6,7 @@ import { KeychainManager } from "../utils/keychain.js";
  * has set one), falling back to the OS keychain if the setup wizard saved
  * one there.
  *
- * This closes a real gap: `codeagent setup` could save a key to the
+ * This closes a real gap: `khanagent setup` could save a key to the
  * keychain, but until now nothing ever read it back — `_apiKey()` in every
  * provider adapter checked `process.env` only. Persisted setup was
  * effectively silent.

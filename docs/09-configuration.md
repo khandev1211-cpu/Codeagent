@@ -3,8 +3,8 @@
 ## Layering (highest to lowest precedence)
 
 1. **CLI flags** — e.g. `--yolo`, `--model`, `--provider` passed directly on invocation.
-2. **Project config** — `.codeagent/config.json` in the current project root, for settings specific to that repo (e.g. a broader allowed write-path, a project-specific system prompt addendum).
-3. **Global user config** — `~/.codeagentrc`, for user-wide defaults (default model, default max-iterations).
+2. **Project config** — `.khanagent/config.json` in the current project root, for settings specific to that repo (e.g. a broader allowed write-path, a project-specific system prompt addendum).
+3. **Global user config** — `~/.khanagentrc`, for user-wide defaults (default model, default max-iterations).
 4. **Built-in defaults** — hardcoded fallbacks in `src/config/schema.js` so the tool works out of the box with zero config.
 
 Each layer only needs to specify what it wants to override — everything else falls through to the next layer down.
@@ -14,8 +14,8 @@ Each layer only needs to specify what it wants to override — everything else f
 ```js
 function loadConfig(cliArgs) {
   const defaults = getDefaults();
-  const globalConfig = readIfExists(path.join(os.homedir(), ".codeagentrc"));
-  const projectConfig = readIfExists(path.join(process.cwd(), ".codeagent", "config.json"));
+  const globalConfig = readIfExists(path.join(os.homedir(), ".khanagentrc"));
+  const projectConfig = readIfExists(path.join(process.cwd(), ".khanagent", "config.json"));
   const merged = deepMerge(defaults, globalConfig, projectConfig, cliArgs);
   return ConfigSchema.parse(merged); // throws a clear error on invalid config
 }
@@ -48,29 +48,29 @@ const ConfigSchema = z.object({
 });
 ```
 
-This list has grown considerably since Tier 1/Tier 2 shipped (`docs/16`'s roadmap) — `src/config/schema.js` is the actual source of truth if this doc and the real file ever disagree; every field above should also appear in `codeagent config`'s output and, for the ones meant to be user-editable, in `INTERACTIVE_CONFIG_FIELDS` (`src/config/setConfigValue.js`, doc 27).
+This list has grown considerably since Tier 1/Tier 2 shipped (`docs/16`'s roadmap) — `src/config/schema.js` is the actual source of truth if this doc and the real file ever disagree; every field above should also appear in `khanagent config`'s output and, for the ones meant to be user-editable, in `INTERACTIVE_CONFIG_FIELDS` (`src/config/setConfigValue.js`, doc 27).
 
-Validation failure produces a clear, specific error message (which field, what was wrong) at boot, before any API calls happen — not a cryptic downstream failure mid-session. `codeagent config validate` (doc 27) runs this same validation on demand, for checking a hand-edited config file without needing to run an actual command.
+Validation failure produces a clear, specific error message (which field, what was wrong) at boot, before any API calls happen — not a cryptic downstream failure mid-session. `khanagent config validate` (doc 27) runs this same validation on demand, for checking a hand-edited config file without needing to run an actual command.
 
 ## API key sourcing
 
 - Read from the environment variable named in `apiKeyEnvVar` (default `ANTHROPIC_API_KEY`) first — **never** stored directly in a config file.
-- If the env var isn't set, falls back to the OS keychain (if `codeagent setup` saved one there) before failing — see doc 18 for the full resolution order (`src/providers/resolveApiKey.js`). Only if neither is found does boot fail, with a clear instruction rather than a cryptic downstream failure mid-session.
+- If the env var isn't set, falls back to the OS keychain (if `khanagent setup` saved one there) before failing — see doc 18 for the full resolution order (`src/providers/resolveApiKey.js`). Only if neither is found does boot fail, with a clear instruction rather than a cryptic downstream failure mid-session.
 
 ## Multi-provider config and the admin system prompt
 
-`ConfigSchema` also carries a `providers` map (every provider ever configured via `codeagent setup`, not just the active one) and an optional `adminSystemPrompt` (a global, priority-layered standing instruction). These are additive to the schema above and don't change how `provider`/`model`/`apiKeyEnvVar` resolve — full detail in doc 18, since they're really about the setup/provider-management story, not the config-loading mechanics this doc owns.
+`ConfigSchema` also carries a `providers` map (every provider ever configured via `khanagent setup`, not just the active one) and an optional `adminSystemPrompt` (a global, priority-layered standing instruction). These are additive to the schema above and don't change how `provider`/`model`/`apiKeyEnvVar` resolve — full detail in doc 18, since they're really about the setup/provider-management story, not the config-loading mechanics this doc owns.
 
 ## Editing config
 
-Three ways in, all reaching the same validation (doc 27 has the full design): `codeagent config set <key> <value>` (scriptable), `codeagent config --interactive`/`-i` (guided menu), or hand-editing `~/.codeagentrc`/`.codeagent/config.json` directly and running `codeagent config validate` afterward. `provider`/`model`/`apiKeyEnvVar`/`providers`/`adminSystemPrompt` are the exception — those have their own dedicated commands (`codeagent use`, `codeagent setup`, `codeagent system-prompt set`) and `config set`/the interactive menu redirect to those instead of offering a second path to the same state.
+Three ways in, all reaching the same validation (doc 27 has the full design): `khanagent config set <key> <value>` (scriptable), `khanagent config --interactive`/`-i` (guided menu), or hand-editing `~/.khanagentrc`/`.khanagent/config.json` directly and running `khanagent config validate` afterward. `provider`/`model`/`apiKeyEnvVar`/`providers`/`adminSystemPrompt` are the exception — those have their own dedicated commands (`khanagent use`, `khanagent setup`, `khanagent system-prompt set`) and `config set`/the interactive menu redirect to those instead of offering a second path to the same state.
 
 ## Project vs. global config — what belongs where
 
 | Setting | Belongs in |
 |---|---|
 | API key | Environment variable, never a file |
-| Default model choice | Global (`~/.codeagentrc`) — personal preference |
+| Default model choice | Global (`~/.khanagentrc`) — personal preference |
 | `allowedWritePaths` broader than project root | Project config — this is a property of the specific repo's needs |
 | `maxIterationsPerTurn` override for a particularly complex repo | Project config |
 | `--yolo` | CLI flag only, by convention — even though it's technically settable in config, defaulting it on globally is discouraged in the README, since it removes the safety net silently for every future session rather than being a conscious per-run choice |

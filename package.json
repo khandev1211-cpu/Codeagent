@@ -1,10 +1,10 @@
 {
-  "name": "codeagent",
+  "name": "khanagent",
   "version": "0.1.0",
   "description": "A terminal-native AI coding agent — describe a goal, watch it build.",
   "type": "module",
   "bin": {
-    "codeagent": "./bin/cli.js"
+    "khanagent": "./bin/cli.js"
   },
   "exports": {
     "./sdk": "./src/sdk/index.js"

@@ -25,9 +25,9 @@ async function readCapped(filePath) {
  * team commits to the repo and edits directly.
  *
  * Two levels, v1 scope (docs/23 has the full reasoning for what's
- * deliberately NOT built): a global one at `~/.codeagent/AGENTS.md` for
+ * deliberately NOT built): a global one at `~/.khanagent/AGENTS.md` for
  * cross-project personal preferences, and a project one at `AGENTS.md`
- * (repo root, not hidden under `.codeagent/` — same visibility reasoning
+ * (repo root, not hidden under `.khanagent/` — same visibility reasoning
  * as README.md: a file the team is meant to see and edit directly, not
  * tool-internal config). No nested per-directory discovery, no `@import`
  * syntax — both real Claude Code capabilities, both skipped here as
@@ -39,7 +39,7 @@ async function readCapped(filePath) {
  */
 export async function loadMemory({ cwd = process.cwd(), homedir = os.homedir() } = {}) {
   const [global, project] = await Promise.all([
-    readCapped(path.join(homedir, ".codeagent", "AGENTS.md")),
+    readCapped(path.join(homedir, ".khanagent", "AGENTS.md")),
     readCapped(path.join(cwd, "AGENTS.md")),
   ]);
   return { global, project };
@@ -56,7 +56,7 @@ export async function loadMemory({ cwd = process.cwd(), homedir = os.homedir() }
 export function formatMemoryForPrompt({ global, project }) {
   if (!global && !project) return null;
   const parts = [];
-  if (global) parts.push(`### Personal preferences (~/.codeagent/AGENTS.md)\n${global}`);
+  if (global) parts.push(`### Personal preferences (~/.khanagent/AGENTS.md)\n${global}`);
   if (project) parts.push(`### Project instructions (AGENTS.md)\n${project}`);
   return parts.join("\n\n");
 }

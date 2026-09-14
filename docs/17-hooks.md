@@ -2,7 +2,7 @@
 
 ## Principle
 
-Hooks let a project react to what the agent is doing — without forking codeagent's core loop to do it. They're the foundation Phase 4 (Skills), Phase 6 (Subagents), and Phase 8 (Plugins) build on top of (doc 16), but they're independently useful the moment they exist: auto-format a file after it's edited, block edits to a protected path, log every command the agent runs.
+Hooks let a project react to what the agent is doing — without forking khanagent's core loop to do it. They're the foundation Phase 4 (Skills), Phase 6 (Subagents), and Phase 8 (Plugins) build on top of (doc 16), but they're independently useful the moment they exist: auto-format a file after it's edited, block edits to a protected path, log every command the agent runs.
 
 Hooks are a **veto and observation layer in front of the existing Safety Layer (doc 07), not a replacement for it.** A hook can say no to a tool call before it happens; nothing about the hooks system lets a hook silently say yes on the user's behalf. `--yolo` still comes from the user, explicitly, the same way it always has.
 
@@ -17,9 +17,9 @@ v1 ships four events — the ones with a natural seam in the existing code, not 
 | `SessionStart` | Once, when a session begins (new or resumed) | No |
 | `SessionEnd` | Once, when a session ends | No |
 
-## Configuration (`.codeagent/hooks.json`)
+## Configuration (`.khanagent/hooks.json`)
 
-Project-scoped only for v1, mirroring the existing `.codeagent/config.json` convention (doc 09). Personal (`~/.codeagent`) and plugin-bundled hooks are deferred to the Plugins phase (doc 16) — that's where a real multi-scope loading story belongs.
+Project-scoped only for v1, mirroring the existing `.khanagent/config.json` convention (doc 09). Personal (`~/.khanagent`) and plugin-bundled hooks are deferred to the Plugins phase (doc 16) — that's where a real multi-scope loading story belongs.
 
 ```json
 {
@@ -28,7 +28,7 @@ Project-scoped only for v1, mirroring the existing `.codeagent/config.json` conv
       { "matcher": "run_bash", "command": "./scripts/check-command.sh" }
     ],
     "PostToolUse": [
-      { "matcher": "write_file|edit_file", "command": "npx prettier --write \"$CODEAGENT_TOOL_PATH\"" }
+      { "matcher": "write_file|edit_file", "command": "npx prettier --write \"$KHANAGENT_TOOL_PATH\"" }
     ]
   }
 }
@@ -38,11 +38,11 @@ Project-scoped only for v1, mirroring the existing `.codeagent/config.json` conv
 - `command` — a shell command. v1 supports shell hooks only; HTTP/prompt/agent-based hook types are a later iteration (PLAN.md Phase 3), not because they're hard, but because shell hooks already match the pattern `run_bash` (doc 05) already established, and nothing yet needs more than that.
 - `timeout` — optional, milliseconds, defaults to 30s. A hook that hangs past this is killed and treated as a non-blocking failure (see below), not a stuck agent.
 
-Run `codeagent hooks` to see what's currently configured for a project.
+Run `khanagent hooks` to see what's currently configured for a project.
 
 ## The hook contract (`src/hooks/runHook.js`)
 
-A hook process receives the event payload as JSON on stdin (also exposed as `CODEAGENT_EVENT`/`CODEAGENT_TOOL` env vars for convenience), and communicates back via exit code:
+A hook process receives the event payload as JSON on stdin (also exposed as `KHANAGENT_EVENT`/`KHANAGENT_TOOL` env vars for convenience), and communicates back via exit code:
 
 - **Exit `0`** — allow, no objection.
 - **Exit `2`** — block. Only enforced for `PreToolUse`; for the other three events there's nothing left to block, so it's logged as a warning instead of acted on. Whatever the hook wrote to stderr becomes the reason shown to the model in the tool_result.

@@ -52,7 +52,7 @@ export class AnthropicProvider extends Provider {
     });
     if (!key) {
       throw new ProviderError(
-        `Missing API key: set ${this.config.apiKeyEnvVar}, or run "codeagent setup" and save it to the keychain.`
+        `Missing API key: set ${this.config.apiKeyEnvVar}, or run "khanagent setup" and save it to the keychain.`
       );
     }
     return key;

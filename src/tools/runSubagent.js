@@ -15,7 +15,7 @@
 export const runSubagent = {
   name: "run_subagent",
   description:
-    "Delegate a task to a specialized subagent (from .codeagent/agents/). The subagent runs independently with its own context — it cannot see this conversation's history, only the task string given here — and returns its final answer.",
+    "Delegate a task to a specialized subagent (from .khanagent/agents/). The subagent runs independently with its own context — it cannot see this conversation's history, only the task string given here — and returns its final answer.",
   input_schema: {
     type: "object",
     properties: {

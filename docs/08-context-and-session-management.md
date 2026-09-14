@@ -29,7 +29,7 @@ This truncation strategy is deliberately conservative — it triggers on an appr
 
 - Full message history for the session (post any summarization already applied).
 - Session metadata: id, project root path, created/updated timestamps, provider/model used.
-- Stored as JSON under `~/.codeagent/sessions/<id>.json` by default (SQLite is a reasonable future upgrade if querying across sessions becomes a real need, but JSON is sufficient and simpler for v1).
+- Stored as JSON under `~/.khanagent/sessions/<id>.json` by default (SQLite is a reasonable future upgrade if querying across sessions becomes a real need, but JSON is sufficient and simpler for v1).
 
 ### When it's written
 
@@ -37,14 +37,14 @@ After **every turn**, not just on clean exit — this is what makes a killed pro
 
 ### Resuming
 
-`codeagent --resume <id>` or `codeagent --resume last` loads the stored message history back into the Agent Core and continues the REPL from there, with the same project-context injection re-verified (if the project has changed significantly since the session was created, the Context Manager can flag that rather than silently working from stale project context).
+`khanagent --resume <id>` or `khanagent --resume last` loads the stored message history back into the Agent Core and continues the REPL from there, with the same project-context injection re-verified (if the project has changed significantly since the session was created, the Context Manager can flag that rather than silently working from stale project context).
 
 ## Diff Tracker (`src/session/diffTracker.js`)
 
 Every destructive tool execution (doc 07) that actually runs (confirmed or `--yolo`-bypassed) is recorded here:
 - File path, previous content (or "did not exist"), new content, timestamp, which turn triggered it.
 
-This powers an `codeagent undo` command that can revert the most recent destructive change, or a specific one by reference. This is explicitly *not* a replacement for git — it's a fast, local safety net for "the agent just did something I want to immediately reverse," and users are still expected to use real version control for their actual project history (doc 01's non-goals).
+This powers an `khanagent undo` command that can revert the most recent destructive change, or a specific one by reference. This is explicitly *not* a replacement for git — it's a fast, local safety net for "the agent just did something I want to immediately reverse," and users are still expected to use real version control for their actual project history (doc 01's non-goals).
 
 ## Interaction between the two systems
 

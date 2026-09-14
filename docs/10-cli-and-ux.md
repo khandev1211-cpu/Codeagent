@@ -3,20 +3,20 @@
 ## Command surface
 
 ```
-codeagent                        # start interactive REPL in current directory
-codeagent "do X"                 # one-shot: run a single request non-interactively, print result, exit
-codeagent --resume <id>          # resume a specific saved session
-codeagent --resume last          # resume the most recent session for this project
-codeagent --yolo                 # bypass destructive-action confirmations for this run
-codeagent --model <name>         # override configured model for this run
-codeagent --provider <name>      # override configured provider for this run
-codeagent undo                   # revert the most recent destructive change (doc 08)
-codeagent undo <ref>              # revert a specific recorded change
-codeagent sessions                # list saved sessions for this project
-codeagent config                 # print the fully resolved config (doc 09), with API key redacted
+khanagent                        # start interactive REPL in current directory
+khanagent "do X"                 # one-shot: run a single request non-interactively, print result, exit
+khanagent --resume <id>          # resume a specific saved session
+khanagent --resume last          # resume the most recent session for this project
+khanagent --yolo                 # bypass destructive-action confirmations for this run
+khanagent --model <name>         # override configured model for this run
+khanagent --provider <name>      # override configured provider for this run
+khanagent undo                   # revert the most recent destructive change (doc 08)
+khanagent undo <ref>              # revert a specific recorded change
+khanagent sessions                # list saved sessions for this project
+khanagent config                 # print the fully resolved config (doc 09), with API key redacted
 ```
 
-Flags follow standard conventions (`--flag value` and `--flag=value` both work, via `commander`); no flag is required for basic usage — running bare `codeagent` should always work if a valid API key is available (doc 09).
+Flags follow standard conventions (`--flag value` and `--flag=value` both work, via `commander`); no flag is required for basic usage — running bare `khanagent` should always work if a valid API key is available (doc 09).
 
 ## REPL behavior (`src/cli/repl.js`)
 
@@ -27,11 +27,11 @@ Flags follow standard conventions (`--flag value` and `--flag=value` both work, 
 
 ## One-shot mode
 
-`codeagent "request"` runs a single turn (which may itself involve many internal tool-use iterations, per doc 04's loop) non-interactively and exits with:
+`khanagent "request"` runs a single turn (which may itself involve many internal tool-use iterations, per doc 04's loop) non-interactively and exits with:
 - Exit code `0` on success.
 - Non-zero exit code on failure (limit hit, unrecoverable error, or — critically — a destructive action that needed confirmation but no TTY was available to ask, unless `--yolo` was passed).
 
-This matters specifically for scripting and CI use (doc 01's success criteria): a script invoking `codeagent --yolo "run the migration"` should behave like any other well-behaved CLI tool with predictable exit codes, not require a human at a prompt.
+This matters specifically for scripting and CI use (doc 01's success criteria): a script invoking `khanagent --yolo "run the migration"` should behave like any other well-behaved CLI tool with predictable exit codes, not require a human at a prompt.
 
 ## Output formatting (`src/cli/render.js`)
 

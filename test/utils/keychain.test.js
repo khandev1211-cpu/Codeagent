@@ -4,10 +4,10 @@ import os from "node:os";
 import path from "node:path";
 import { KeychainManager } from "../../src/utils/keychain.js";
 
-const TEST_PROVIDER = "codeagent-keychain-test-provider";
+const TEST_PROVIDER = "khanagent-keychain-test-provider";
 
 function keysFilePath() {
-  return path.join(os.homedir(), ".codeagent", ".keys.json");
+  return path.join(os.homedir(), ".khanagent", ".keys.json");
 }
 
 describe("KeychainManager", () => {
@@ -24,7 +24,7 @@ describe("KeychainManager", () => {
   });
 
   it("returns null for a provider that was never saved", async () => {
-    const key = await manager.getKey("codeagent-never-configured-provider");
+    const key = await manager.getKey("khanagent-never-configured-provider");
     expect(key).toBeNull();
   });
 
@@ -221,7 +221,7 @@ describe("KeychainManager get-path local fallback (regression)", () => {
     const testManager = new MockedKeychainManager({ logger: { warn: () => {}, debug: () => {} } });
     testManager.platform = "win32";
 
-    const key = await testManager.getKey("codeagent-truly-never-configured");
+    const key = await testManager.getKey("khanagent-truly-never-configured");
     expect(key).toBeNull();
 
     vi.doUnmock("child_process");

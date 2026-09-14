@@ -13,7 +13,7 @@ import { DiffTracker } from "../../src/session/diffTracker.js";
  * (docs/14): `startRepl` used to create its `readline.Interface` at the
  * very top of the function, before several `await`s (MCP connection,
  * project context, memory file loading) that take real time. Piped,
- * fully-buffered input (a test harness, CI, or `printf "..." | codeagent`)
+ * fully-buffered input (a test harness, CI, or `printf "..." | khanagent`)
  * could arrive and be silently consumed by the interface during that
  * setup window — before any `rl.question()` call was pending to receive
  * it — losing the first line entirely.
@@ -71,8 +71,8 @@ describe("startRepl — processes every piped line, not just the first", () => {
   }
 
   async function runReplWithLines(lines, { config = {} } = {}) {
-    cwd = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-repl-test-"));
-    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-repl-home-"));
+    cwd = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-repl-test-"));
+    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-repl-home-"));
     installFakeStdin(lines);
 
     const sessionStore = new SessionStore({ homedir, projectRoot: cwd });

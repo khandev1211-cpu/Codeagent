@@ -5,7 +5,7 @@ import path from "node:path";
 import { discoverMcpServers } from "../../src/mcp/discoverMcpServers.js";
 
 function writeConfig(cwd, obj) {
-  const dir = path.join(cwd, ".codeagent");
+  const dir = path.join(cwd, ".khanagent");
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "mcp.json"), JSON.stringify(obj));
 }
@@ -14,14 +14,14 @@ describe("discoverMcpServers", () => {
   let tmpDir;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-mcp-"));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-mcp-"));
   });
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("returns an empty array when .codeagent/mcp.json doesn't exist", () => {
+  it("returns an empty array when .khanagent/mcp.json doesn't exist", () => {
     expect(discoverMcpServers({ cwd: tmpDir })).toEqual([]);
   });
 
@@ -56,7 +56,7 @@ describe("discoverMcpServers", () => {
   });
 
   it("skips invalid JSON with a warning rather than throwing", () => {
-    const dir = path.join(tmpDir, ".codeagent");
+    const dir = path.join(tmpDir, ".khanagent");
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "mcp.json"), "{ not valid json");
     const warnings = [];

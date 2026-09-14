@@ -15,7 +15,7 @@ describe("runBash", () => {
   let tmpDir;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "codeagent-runbash-"));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "khanagent-runbash-"));
     _resetSandboxCache();
     _resetRunBashWarningState();
   });
@@ -76,8 +76,8 @@ describeIfBwrap("runBash sandboxing (real bubblewrap, linux only)", () => {
   let outsideDir;
 
   beforeEach(async () => {
-    projectDir = await fs.mkdtemp(path.join(os.tmpdir(), "codeagent-project-"));
-    outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), "codeagent-outside-"));
+    projectDir = await fs.mkdtemp(path.join(os.tmpdir(), "khanagent-project-"));
+    outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), "khanagent-outside-"));
     _resetSandboxCache();
   });
 

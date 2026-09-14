@@ -5,17 +5,17 @@ import { ConfigError } from "../utils/errors.js";
 /**
  * Fields that already have their own dedicated command — `config set`
  * redirects to those instead of offering a second way to do the same
- * thing (which would risk the two paths drifting: e.g. `codeagent use`
+ * thing (which would risk the two paths drifting: e.g. `khanagent use`
  * already handles keeping `provider`/`model`/`apiKeyEnvVar` consistent
  * with the `providers` map, something a bare `config set model x` could
  * easily do wrong).
  */
 const REDIRECTS = {
-  provider: 'Use "codeagent use <provider> [model]" to switch providers.',
-  model: 'Use "codeagent use <provider> <model>" to change the model.',
-  apiKeyEnvVar: 'Use "codeagent setup" to configure a provider\'s API key.',
-  providers: 'Use "codeagent setup" to add or reconfigure a provider.',
-  adminSystemPrompt: 'Use \'codeagent system-prompt set "<text>"\' instead.',
+  provider: 'Use "khanagent use <provider> [model]" to switch providers.',
+  model: 'Use "khanagent use <provider> <model>" to change the model.',
+  apiKeyEnvVar: 'Use "khanagent setup" to configure a provider\'s API key.',
+  providers: 'Use "khanagent setup" to add or reconfigure a provider.',
+  adminSystemPrompt: 'Use \'khanagent system-prompt set "<text>"\' instead.',
 };
 
 /** Unwraps ZodDefault/ZodOptional to get at the actual leaf type (boolean/enum/number/array/string) a field's raw CLI string needs coercing into. */
@@ -36,7 +36,7 @@ export function coerceConfigValue(key, rawValue) {
   const fieldSchema = ConfigSchema.shape[key];
   if (!fieldSchema) {
     throw new ConfigError(
-      `Unknown config key: "${key}". Run "codeagent config" to see every resolved field, or "codeagent config validate" to check a hand-edited file.`
+      `Unknown config key: "${key}". Run "khanagent config" to see every resolved field, or "khanagent config validate" to check a hand-edited file.`
     );
   }
   if (REDIRECTS[key]) {
@@ -76,7 +76,7 @@ export function coerceConfigValue(key, rawValue) {
   return result.data;
 }
 
-/** Coerces + validates + persists in one call — the single path both `codeagent config set` and the interactive manager (`configManager.js`) go through, so there's exactly one implementation of "what's a valid value for this key," not two that could drift apart. */
+/** Coerces + validates + persists in one call — the single path both `khanagent config set` and the interactive manager (`configManager.js`) go through, so there's exactly one implementation of "what's a valid value for this key," not two that could drift apart. */
 export function setConfigValue(key, rawValue, { homedir } = {}) {
   const coerced = coerceConfigValue(key, rawValue);
   saveGlobalConfig({ [key]: coerced }, { homedir });

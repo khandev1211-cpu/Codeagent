@@ -39,7 +39,7 @@ describe("Agent Coding Capabilities (E2E)", () => {
   let testFilePath;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-e2e-"));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-e2e-"));
     testFilePath = path.join(tmpDir, "example.js");
     fs.writeFileSync(
       testFilePath,

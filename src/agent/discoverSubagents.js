@@ -5,7 +5,7 @@ import { parseFrontmatter } from "../skills/frontmatter.js";
 const REQUIRED_FIELDS = ["name", "description"];
 
 /**
- * Discovers subagent definitions under `.codeagent/agents/<name>.md` —
+ * Discovers subagent definitions under `.khanagent/agents/<name>.md` —
  * project-scoped only for v1, same reasoning as Skills (docs/19): the
  * multi-scope (personal / plugin-bundled) loading story belongs to the
  * Plugins phase, not bolted on early to something not yet proven.
@@ -21,7 +21,7 @@ const REQUIRED_FIELDS = ["name", "description"];
  * as discoverSkills.
  */
 export function discoverSubagents({ cwd = process.cwd(), logger } = {}) {
-  const agentsDir = path.join(cwd, ".codeagent", "agents");
+  const agentsDir = path.join(cwd, ".khanagent", "agents");
   if (!fs.existsSync(agentsDir)) return [];
 
   const entries = fs

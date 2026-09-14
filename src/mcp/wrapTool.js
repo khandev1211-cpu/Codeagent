@@ -14,7 +14,7 @@
  * purposes at once: it can never collide with a built-in tool name (or
  * another server's tool of the same name), and the name itself signals
  * to both the model and anyone reading a confirmation prompt or audit
- * log that this call is going out to third-party code, not codeagent's
+ * log that this call is going out to third-party code, not khanagent's
  * own — transparency as a side effect of the collision-avoidance
  * mechanism, not a separate feature.
  */

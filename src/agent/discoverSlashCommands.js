@@ -5,7 +5,7 @@ import { parseFrontmatter } from "../skills/frontmatter.js";
 const REQUIRED_FIELDS = ["name", "description"];
 
 /**
- * Discovers slash-command prompt templates under `.codeagent/commands/
+ * Discovers slash-command prompt templates under `.khanagent/commands/
  * <name>.md` — same shape and same reasoning as discoverSubagents.js:
  * flat files (a command is a single self-contained template, no
  * supporting-files folder needed), project-scoped only for v1, a
@@ -13,7 +13,7 @@ const REQUIRED_FIELDS = ["name", "description"];
  * than thrown.
  */
 export function discoverSlashCommands({ cwd = process.cwd(), logger } = {}) {
-  const commandsDir = path.join(cwd, ".codeagent", "commands");
+  const commandsDir = path.join(cwd, ".khanagent", "commands");
   if (!fs.existsSync(commandsDir)) return [];
 
   const entries = fs

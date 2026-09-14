@@ -18,7 +18,7 @@ describe("resolveTrustKey", () => {
   let base;
 
   beforeEach(() => {
-    base = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-trust-realpath-"));
+    base = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-trust-realpath-"));
     realDir = path.join(base, "real-project");
     fs.mkdirSync(realDir);
     symlinkDir = path.join(base, "symlinked-project");
@@ -50,9 +50,9 @@ describe("Folder Trust registry (isFolderTrusted / trustFolder / revokeFolder / 
   let projectB;
 
   beforeEach(() => {
-    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-trust-home-"));
-    projectA = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-trust-project-a-"));
-    projectB = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-trust-project-b-"));
+    homedir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-trust-home-"));
+    projectA = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-trust-project-a-"));
+    projectB = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-trust-project-b-"));
   });
 
   afterEach(() => {

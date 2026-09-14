@@ -25,15 +25,15 @@ describe("discoverSkills", () => {
   let skillsDir;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-skills-test-"));
-    skillsDir = path.join(tmpDir, ".codeagent", "skills");
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-skills-test-"));
+    skillsDir = path.join(tmpDir, ".khanagent", "skills");
   });
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("returns an empty array when .codeagent/skills doesn't exist", () => {
+  it("returns an empty array when .khanagent/skills doesn't exist", () => {
     expect(discoverSkills({ cwd: tmpDir })).toEqual([]);
   });
 
@@ -45,7 +45,7 @@ describe("discoverSkills", () => {
       name: "commit-message",
       description: "Write a Conventional Commits style commit message.",
       allowedTools: ["run_bash"],
-      path: ".codeagent/skills/commit-message/SKILL.md",
+      path: ".khanagent/skills/commit-message/SKILL.md",
     });
   });
 

@@ -15,8 +15,8 @@ describe("discoverSubagents", () => {
   let agentsDir;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-agents-"));
-    agentsDir = path.join(tmpDir, ".codeagent", "agents");
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-agents-"));
+    agentsDir = path.join(tmpDir, ".khanagent", "agents");
     fs.mkdirSync(agentsDir, { recursive: true });
   });
 
@@ -24,7 +24,7 @@ describe("discoverSubagents", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("returns an empty array when .codeagent/agents doesn't exist", () => {
+  it("returns an empty array when .khanagent/agents doesn't exist", () => {
     fs.rmSync(agentsDir, { recursive: true, force: true });
     expect(discoverSubagents({ cwd: tmpDir })).toEqual([]);
   });
@@ -72,8 +72,8 @@ describe("discoverSubagents", () => {
 
 describe("SubagentRegistry", () => {
   const SAMPLE = [
-    { name: "reviewer", description: "Reviews a diff.", tools: null, instructions: "Review it.", path: ".codeagent/agents/reviewer.md" },
-    { name: "tester", description: "Writes tests.", tools: ["read_file", "write_file"], instructions: "Write tests.", path: ".codeagent/agents/tester.md" },
+    { name: "reviewer", description: "Reviews a diff.", tools: null, instructions: "Review it.", path: ".khanagent/agents/reviewer.md" },
+    { name: "tester", description: "Writes tests.", tools: ["read_file", "write_file"], instructions: "Write tests.", path: ".khanagent/agents/tester.md" },
   ];
 
   it("list/has/get behave as expected", () => {

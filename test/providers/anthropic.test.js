@@ -3,7 +3,7 @@ import { AnthropicProvider } from "../../src/providers/anthropic.js";
 import { ProviderError } from "../../src/utils/errors.js";
 
 const quietLogger = { warn: () => {}, debug: () => {} };
-const ENV_VAR = "CODEAGENT_TEST_ANTHROPIC_KEY";
+const ENV_VAR = "KHANAGENT_TEST_ANTHROPIC_KEY";
 
 function jsonResponse(body, { status = 200 } = {}) {
   return {
@@ -70,7 +70,7 @@ describe("AnthropicProvider.send", () => {
     const provider = makeProvider(fetchImpl);
 
     await expect(provider.send([], [])).rejects.toThrow(ProviderError);
-    await expect(provider.send([], [])).rejects.toThrow(/codeagent setup/);
+    await expect(provider.send([], [])).rejects.toThrow(/khanagent setup/);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 

@@ -39,12 +39,12 @@ function deepMerge(...objects) {
 
 /**
  * Resolve config from, highest to lowest precedence:
- * CLI flags -> project config (.codeagent/config.json) -> global config
- * (~/.codeagentrc) -> built-in defaults. See doc 09.
+ * CLI flags -> project config (.khanagent/config.json) -> global config
+ * (~/.khanagentrc) -> built-in defaults. See doc 09.
  */
 export function loadConfig(cliArgs = {}, { cwd = process.cwd(), homedir = os.homedir() } = {}) {
-  const globalConfig = readJsonIfExists(path.join(homedir, ".codeagentrc"));
-  const projectConfig = readJsonIfExists(path.join(cwd, ".codeagent", "config.json"));
+  const globalConfig = readJsonIfExists(path.join(homedir, ".khanagentrc"));
+  const projectConfig = readJsonIfExists(path.join(cwd, ".khanagent", "config.json"));
 
   // If the CLI is switching provider without specifying model/apiKeyEnvVar,
   // seed sensible per-provider defaults rather than leaving the wrong
@@ -75,7 +75,7 @@ export function redactedConfig(config) {
 }
 
 function getGlobalConfigPath({ homedir = os.homedir() } = {}) {
-  return path.join(homedir, ".codeagentrc");
+  return path.join(homedir, ".khanagentrc");
 }
 
 /**
@@ -91,7 +91,7 @@ export function configExists({ homedir = os.homedir() } = {}) {
 }
 
 /**
- * Writes a partial update into ~/.codeagentrc, deep-merged with whatever's
+ * Writes a partial update into ~/.khanagentrc, deep-merged with whatever's
  * already there — so saving one provider's settings never wipes out
  * another provider already configured, and setting adminSystemPrompt never
  * touches `providers`. This is the persistence step the setup wizard never
@@ -131,7 +131,7 @@ export function upsertProvider(
   return saveGlobalConfig(partial, { homedir });
 }
 
-/** Lists every provider configured globally, i.e. present in ~/.codeagentrc's `providers` map. */
+/** Lists every provider configured globally, i.e. present in ~/.khanagentrc's `providers` map. */
 export function listConfiguredProviders({ homedir = os.homedir() } = {}) {
   const globalConfig = readJsonIfExists(getGlobalConfigPath({ homedir }));
   return globalConfig.providers || {};

@@ -3,7 +3,7 @@
  * subset of internals, not a blanket re-export of `src/`. Every export
  * here was individually audited for "would I commit to this shape long
  * term," per PLAN.md's stated bar for this item. Import from
- * `codeagent/sdk`, not from internal paths under `codeagent/src/*` —
+ * `khanagent/sdk`, not from internal paths under `khanagent/src/*` —
  * only this file's exports are covered by the stability contract
  * (docs/29); anything reached by deep-importing a source path can change
  * or move without notice.
@@ -34,10 +34,10 @@ export { SessionStore } from "../session/store.js";
 export { DiffTracker } from "../session/diffTracker.js";
 
 // Safety layer — confirm/permissionRules/policy are the actual
-// enforcement mechanisms; createConfirmer is codeagent's own
+// enforcement mechanisms; createConfirmer is khanagent's own
 // terminal-prompt implementation of the confirm contract, exported as a
 // convenience, NOT the only valid one. A library consumer embedding
-// codeagent in a non-terminal context (a web UI, a bot) is expected to
+// khanagent in a non-terminal context (a web UI, a bot) is expected to
 // supply their own `confirm` function matching the same
 // `async (tool, input) => ({ allowed, ... })` shape Orchestrator expects
 // — see docs/29 for the full contract documentation.

@@ -18,7 +18,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 
 export async function connectMcpServer({ name, command, args, env }) {
   const transport = new StdioClientTransport({ command, args, env });
-  const client = new Client({ name: "codeagent", version: "1.0.0" }, { capabilities: {} });
+  const client = new Client({ name: "khanagent", version: "1.0.0" }, { capabilities: {} });
   await client.connect(transport);
   return client;
 }

@@ -3,7 +3,7 @@ import { connectMcpServer, listMcpTools, callMcpTool } from "./client.js";
 import { wrapMcpTool } from "./wrapTool.js";
 
 /**
- * Connects to every server in `.codeagent/mcp.json`, lists + wraps each
+ * Connects to every server in `.khanagent/mcp.json`, lists + wraps each
  * server's tools, and registers them into `toolRegistry` — mirrors
  * wireSkillsIndex/wireSubagentsIndex's shape (one function, called once
  * per session from each CLI entry point) even though MCP's setup is

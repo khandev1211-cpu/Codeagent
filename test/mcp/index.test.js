@@ -6,7 +6,7 @@ import { connectAllMcpServers, closeAllMcpClients } from "../../src/mcp/index.js
 import { ToolRegistry } from "../../src/tools/registry.js";
 
 function writeConfig(cwd, obj) {
-  const dir = path.join(cwd, ".codeagent");
+  const dir = path.join(cwd, ".khanagent");
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "mcp.json"), JSON.stringify(obj));
 }
@@ -15,7 +15,7 @@ describe("connectAllMcpServers", () => {
   let tmpDir;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-mcp-index-"));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-mcp-index-"));
   });
 
   afterEach(() => {

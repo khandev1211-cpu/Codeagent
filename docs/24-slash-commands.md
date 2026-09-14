@@ -4,9 +4,9 @@ The parity gap named in `docs/16`: reusable custom prompts as files, invoked in-
 
 ## Two kinds of slash command
 
-**Built-in** (`help`, `clear`, `plan`) — fixed, never shadowable by a project's own `.codeagent/commands/<name>.md` with the same name. Same reasoning tool names like `run_subagent`/`skill_info` aren't shadowable by a project's own tool definitions: a small, fixed vocabulary the user can rely on regardless of what a given project has configured.
+**Built-in** (`help`, `clear`, `plan`) — fixed, never shadowable by a project's own `.khanagent/commands/<name>.md` with the same name. Same reasoning tool names like `run_subagent`/`skill_info` aren't shadowable by a project's own tool definitions: a small, fixed vocabulary the user can rely on regardless of what a given project has configured.
 
-**Custom** (`.codeagent/commands/<name>.md`) — same frontmatter+body shape as Skills and Subagents (`name`, `description`, then the body as a prompt template), for the same consistency reasoning those two features already used, and the same `parseFrontmatter` reuse. A custom command resolves to a *prompt string*, not a special execution path — once resolved, it's handed to the orchestrator exactly as if the user had typed it directly. This is deliberate: no new "command execution" concept needed in the orchestrator at all, no new safety surface, no new tool. It's string expansion, nothing more.
+**Custom** (`.khanagent/commands/<name>.md`) — same frontmatter+body shape as Skills and Subagents (`name`, `description`, then the body as a prompt template), for the same consistency reasoning those two features already used, and the same `parseFrontmatter` reuse. A custom command resolves to a *prompt string*, not a special execution path — once resolved, it's handed to the orchestrator exactly as if the user had typed it directly. This is deliberate: no new "command execution" concept needed in the orchestrator at all, no new safety surface, no new tool. It's string expansion, nothing more.
 
 ## Argument substitution
 
@@ -24,7 +24,7 @@ Execution is the caller's job, and deliberately duplicated (not shared) between 
 
 ## What this doesn't do (v1)
 
-- **No personal (`~/.codeagent/commands/`) or plugin-bundled commands** — deferred to the Plugins phase, same as Skills and Subagents.
+- **No personal (`~/.khanagent/commands/`) or plugin-bundled commands** — deferred to the Plugins phase, same as Skills and Subagents.
 - **No namespacing/subdirectories** (e.g. `/git:commit`) — a flat command namespace is the smallest version of this that's useful; nested namespacing is speculative complexity for a project size not yet demonstrated to need it.
 - **No frontmatter-level tool restriction** for custom commands (unlike Subagents' `tools:` field) — a custom command expands to a plain prompt in the *current* conversation with the *current* tool set; it isn't a new scoped execution context the way a subagent is, so there's nothing analogous to restrict.
 - **No command chaining/composition** (one slash command invoking another) — the expanded text is just what the user "said" for that turn; nothing prevents a template from mentioning another command's name in its body, but there's no special resolution of that.

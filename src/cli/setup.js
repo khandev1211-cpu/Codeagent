@@ -17,7 +17,7 @@ const ALL_PROVIDERS = [
 /**
  * Interactive setup wizard. First run: walks through provider selection,
  * API key, and model. Every run after that (docs/18): detects what's
- * already configured in ~/.codeagentrc and offers to add another
+ * already configured in ~/.khanagentrc and offers to add another
  * provider, switch the active one, or reconfigure a key — rather than
  * blindly repeating the fresh-install flow.
  *
@@ -40,7 +40,7 @@ export class SetupWizard {
     const alreadyConfigured = listConfiguredProviders({ homedir: this.homedir });
     const hasExisting = Object.keys(alreadyConfigured).length > 0;
 
-    console.log("🤖 Welcome to CodeAgent!");
+    console.log("🤖 Welcome to KhanAgent!");
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
     const rl = this._createReadline();
@@ -57,14 +57,14 @@ export class SetupWizard {
   async _runFreshSetup(rl) {
     const provider = await this._selectProvider(rl);
     const result = await this._configureProvider(rl, provider, { makeActive: true });
-    console.log("✨ Setup complete! codeagent is ready — just run `codeagent` again.\n");
-    console.log('Tip: run "codeagent setup" again anytime to add another provider, switch your default, or reconfigure a key.');
-    console.log('Tip: set a standing instruction for every project with "codeagent system-prompt set".\n');
+    console.log("✨ Setup complete! khanagent is ready — just run `khanagent` again.\n");
+    console.log('Tip: run "khanagent setup" again anytime to add another provider, switch your default, or reconfigure a key.');
+    console.log('Tip: set a standing instruction for every project with "khanagent system-prompt set".\n');
     return result;
   }
 
   async _runReturningUserMenu(rl, alreadyConfigured) {
-    console.log("You already have codeagent configured:\n");
+    console.log("You already have khanagent configured:\n");
     for (const [name, cfg] of Object.entries(alreadyConfigured)) {
       console.log(`  - ${name} (${cfg.model || "default model"})`);
     }
@@ -132,9 +132,9 @@ export class SetupWizard {
       { homedir: this.homedir, makeActive }
     );
 
-    console.log(`\n✅ Saved ${provider} (${model}) to ~/.codeagentrc${makeActive ? " and set it as active" : ""}.`);
+    console.log(`\n✅ Saved ${provider} (${model}) to ~/.khanagentrc${makeActive ? " and set it as active" : ""}.`);
     if (!useKeychain && provider !== "ollama") {
-      console.log(`   Remember to set ${apiKeyEnvVar} in your shell environment before running codeagent.`);
+      console.log(`   Remember to set ${apiKeyEnvVar} in your shell environment before running khanagent.`);
     }
     console.log();
 
@@ -364,7 +364,7 @@ export class SetupWizard {
       openrouter: "https://openrouter.ai/keys",
       ollama: "https://ollama.ai",
     };
-    return links[provider] || "https://codeagent.ai/setup";
+    return links[provider] || "https://khanagent.ai/setup";
   }
 }
 

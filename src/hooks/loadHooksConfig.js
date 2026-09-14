@@ -15,9 +15,9 @@ const HooksFileSchema = z.object({
 });
 
 /**
- * Loads .codeagent/hooks.json from the project root, mirroring the
- * .codeagent/config.json convention already used by config/loader.js
- * (doc 09). Project-scoped only for v1 — personal (~/.codeagent) and
+ * Loads .khanagent/hooks.json from the project root, mirroring the
+ * .khanagent/config.json convention already used by config/loader.js
+ * (doc 09). Project-scoped only for v1 — personal (~/.khanagent) and
  * plugin-bundled hooks are deferred to the Plugins phase (doc 16), which is
  * where a real multi-scope loading story belongs; adding it here first
  * would be building ahead of its own dependency.
@@ -26,7 +26,7 @@ const HooksFileSchema = z.object({
  * opt-in, so "no file" must mean "zero overhead," not an error.
  */
 export function loadHooksConfig({ cwd = process.cwd() } = {}) {
-  const filePath = path.join(cwd, ".codeagent", "hooks.json");
+  const filePath = path.join(cwd, ".khanagent", "hooks.json");
   if (!fs.existsSync(filePath)) {
     return { hooks: {} };
   }

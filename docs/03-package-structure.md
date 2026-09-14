@@ -3,7 +3,7 @@
 ## Folder layout
 
 ```
-codeagent/
+khanagent/
 ├── bin/
 │   └── cli.js                  # shebang entry, minimal — delegates to src/
 ├── src/
@@ -53,11 +53,11 @@ codeagent/
 
 ```json
 {
-  "name": "codeagent",
+  "name": "khanagent",
   "version": "1.0.0",
   "type": "module",
   "bin": {
-    "codeagent": "./bin/cli.js"
+    "khanagent": "./bin/cli.js"
   },
   "engines": {
     "node": ">=18.0.0"

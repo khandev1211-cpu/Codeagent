@@ -95,7 +95,7 @@ export class OpenAiCompatibleProvider extends Provider {
     });
     if (!key) {
       throw new ProviderError(
-        `Missing API key: set ${this.config.apiKeyEnvVar}, or run "codeagent setup" and save it to the keychain (required for ${this.providerLabel}).`
+        `Missing API key: set ${this.config.apiKeyEnvVar}, or run "khanagent setup" and save it to the keychain (required for ${this.providerLabel}).`
       );
     }
     return key;

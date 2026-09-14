@@ -9,21 +9,21 @@ describe("loadPermissionRules", () => {
   let tmpDir;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeagent-permrules-test-"));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-permrules-test-"));
   });
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("returns an empty rules array when .codeagent/permissions.json doesn't exist", () => {
+  it("returns an empty rules array when .khanagent/permissions.json doesn't exist", () => {
     expect(loadPermissionRules({ cwd: tmpDir })).toEqual({ rules: [] });
   });
 
   it("loads and validates a well-formed rules file", () => {
-    fs.mkdirSync(path.join(tmpDir, ".codeagent"));
+    fs.mkdirSync(path.join(tmpDir, ".khanagent"));
     fs.writeFileSync(
-      path.join(tmpDir, ".codeagent", "permissions.json"),
+      path.join(tmpDir, ".khanagent", "permissions.json"),
       JSON.stringify({ rules: [{ tool: "run_bash", pattern: "npm test*", behavior: "allow" }] })
     );
     const result = loadPermissionRules({ cwd: tmpDir });
@@ -32,24 +32,24 @@ describe("loadPermissionRules", () => {
   });
 
   it("throws ConfigError on malformed JSON", () => {
-    fs.mkdirSync(path.join(tmpDir, ".codeagent"));
-    fs.writeFileSync(path.join(tmpDir, ".codeagent", "permissions.json"), "{ not valid");
+    fs.mkdirSync(path.join(tmpDir, ".khanagent"));
+    fs.writeFileSync(path.join(tmpDir, ".khanagent", "permissions.json"), "{ not valid");
     expect(() => loadPermissionRules({ cwd: tmpDir })).toThrow(ConfigError);
   });
 
   it("throws ConfigError on an invalid behavior value", () => {
-    fs.mkdirSync(path.join(tmpDir, ".codeagent"));
+    fs.mkdirSync(path.join(tmpDir, ".khanagent"));
     fs.writeFileSync(
-      path.join(tmpDir, ".codeagent", "permissions.json"),
+      path.join(tmpDir, ".khanagent", "permissions.json"),
       JSON.stringify({ rules: [{ tool: "run_bash", pattern: "x", behavior: "maybe" }] })
     );
     expect(() => loadPermissionRules({ cwd: tmpDir })).toThrow(ConfigError);
   });
 
   it("throws ConfigError when a rule is missing a required field", () => {
-    fs.mkdirSync(path.join(tmpDir, ".codeagent"));
+    fs.mkdirSync(path.join(tmpDir, ".khanagent"));
     fs.writeFileSync(
-      path.join(tmpDir, ".codeagent", "permissions.json"),
+      path.join(tmpDir, ".khanagent", "permissions.json"),
       JSON.stringify({ rules: [{ tool: "run_bash", behavior: "deny" }] })
     );
     expect(() => loadPermissionRules({ cwd: tmpDir })).toThrow(ConfigError);

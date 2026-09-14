@@ -3,8 +3,8 @@ import { skillInfo } from "../../src/tools/skillInfo.js";
 import { SkillRegistry } from "../../src/skills/registry.js";
 
 const SAMPLE_SKILLS = [
-  { name: "commit-message", description: "Write a Conventional Commits message.", allowedTools: null, path: ".codeagent/skills/commit-message/SKILL.md" },
-  { name: "code-review", description: "Review a diff for common issues.", allowedTools: null, path: ".codeagent/skills/code-review/SKILL.md" },
+  { name: "commit-message", description: "Write a Conventional Commits message.", allowedTools: null, path: ".khanagent/skills/commit-message/SKILL.md" },
+  { name: "code-review", description: "Review a diff for common issues.", allowedTools: null, path: ".khanagent/skills/code-review/SKILL.md" },
 ];
 
 describe("skillInfo tool", () => {
@@ -17,7 +17,7 @@ describe("skillInfo tool", () => {
     const result = await skillInfo.execute({ names: ["commit-message"] }, { skillRegistry });
     expect(result.ok).toBe(true);
     expect(result.skills).toEqual([
-      { name: "commit-message", found: true, description: "Write a Conventional Commits message.", path: ".codeagent/skills/commit-message/SKILL.md" },
+      { name: "commit-message", found: true, description: "Write a Conventional Commits message.", path: ".khanagent/skills/commit-message/SKILL.md" },
     ]);
   });
 

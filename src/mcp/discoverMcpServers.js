@@ -2,15 +2,15 @@ import fs from "node:fs";
 import path from "node:path";
 
 /**
- * `.codeagent/mcp.json`, project-scoped only for v1 — modeled loosely on
+ * `.khanagent/mcp.json`, project-scoped only for v1 — modeled loosely on
  * Claude Code's `.mcp.json` (`mcpServers` object keyed by server name,
  * each with `command`/`args`/`env`). stdio transport only (PLAN.md's
  * stated v1 scope: "stdio first, simplest, matches how most local MCP
  * servers run"); HTTP/SSE transports are a later addition, not a gap
  * silently ignored.
  *
- * A `.codeagent/mcp.json` committed to a project is trusted at the same
- * level as `.codeagent/hooks.json` — both define commands that run
+ * A `.khanagent/mcp.json` committed to a project is trusted at the same
+ * level as `.khanagent/hooks.json` — both define commands that run
  * automatically at session start, same trust boundary as any other code
  * in the repo (docs/25 has the full reasoning). A malformed or
  * incomplete server entry is skipped with a warning, same defensive
@@ -19,14 +19,14 @@ import path from "node:path";
  * session) from starting.
  */
 export function discoverMcpServers({ cwd = process.cwd(), logger } = {}) {
-  const configPath = path.join(cwd, ".codeagent", "mcp.json");
+  const configPath = path.join(cwd, ".khanagent", "mcp.json");
   if (!fs.existsSync(configPath)) return [];
 
   let raw;
   try {
     raw = JSON.parse(fs.readFileSync(configPath, "utf-8"));
   } catch (err) {
-    logger?.warn(`Skipping .codeagent/mcp.json: invalid JSON (${err.message})`);
+    logger?.warn(`Skipping .khanagent/mcp.json: invalid JSON (${err.message})`);
     return [];
   }
 

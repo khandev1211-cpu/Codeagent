@@ -8,7 +8,7 @@ describe("edit_file", () => {
   let tmpDir;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "codeagent-test-"));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "khanagent-test-"));
     await fs.writeFile(path.join(tmpDir, "a.txt"), "foo bar baz\nfoo again", "utf-8");
   });
 

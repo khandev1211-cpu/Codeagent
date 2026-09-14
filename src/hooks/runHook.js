@@ -17,7 +17,7 @@ function pickShell() {
  *
  * Contract:
  *  - the event payload is written to the hook's stdin as JSON, and also
- *    exposed as CODEAGENT_EVENT / CODEAGENT_TOOL env vars for convenience
+ *    exposed as KHANAGENT_EVENT / KHANAGENT_TOOL env vars for convenience
  *  - exit code 0             -> allow, no objection
  *  - exit code 2             -> block (only meaningful for PreToolUse —
  *    other events log it as a warning, since there's nothing left to block
@@ -52,8 +52,8 @@ export function runHook(hookDef, payload, { cwd, logger, timeoutMs } = {}) {
         cwd: cwd || process.cwd(),
         env: {
           ...process.env,
-          CODEAGENT_EVENT: payload.event || "",
-          CODEAGENT_TOOL: payload.tool || "",
+          KHANAGENT_EVENT: payload.event || "",
+          KHANAGENT_TOOL: payload.tool || "",
         },
       });
     } catch (err) {

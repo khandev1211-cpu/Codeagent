@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { shouldRequireFolderTrust } from "../../src/cli/index.js";
 
 function argv(...args) {
-  return ["node", "codeagent", ...args];
+  return ["node", "khanagent", ...args];
 }
 
 describe("shouldRequireFolderTrust", () => {
