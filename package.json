@@ -3,6 +3,30 @@
   "version": "0.1.0",
   "description": "A terminal-native AI coding agent — describe a goal, watch it build.",
   "type": "module",
+  "keywords": [
+    "ai",
+    "ai-agent",
+    "coding-agent",
+    "cli",
+    "terminal",
+    "llm",
+    "claude",
+    "anthropic",
+    "autonomous-agent",
+    "developer-tools",
+    "mcp",
+    "model-context-protocol",
+    "code-generation",
+    "automation"
+  ],
+  "homepage": "https://github.com/khandev1211-cpu/Codeagent#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khandev1211-cpu/Codeagent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/khandev1211-cpu/Codeagent/issues"
+  },
   "bin": {
     "khanagent": "./bin/cli.js"
   },

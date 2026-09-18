@@ -13,6 +13,8 @@
 
   <p>
     <img src="https://github.com/khandev1211-cpu/Codeagent/actions/workflows/ci.yml/badge.svg" alt="CI">
+    <img src="https://img.shields.io/npm/v/khanagent" alt="npm version">
+    <img src="https://img.shields.io/npm/dm/khanagent" alt="npm downloads">
     <img src="https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white" alt="Node >=22">
     <img src="https://img.shields.io/badge/license-MIT-blue" alt="License MIT">
     <img src="https://img.shields.io/badge/ESM-module-ffd700" alt="ESM Module">
@@ -21,7 +23,7 @@
 
 ---
 
-**khanagent** is a terminal-native AI coding agent, distributed as an npm package. Describe a goal in plain language — `khanagent` reads your project, plans, edits files, runs commands, and iterates until the task is done, asking for confirmation before anything destructive.
+**khanagent** is a terminal-native AI coding agent, distributed as an npm package — **live on npm**, `npm install -g khanagent`. Describe a goal in plain language — `khanagent` reads your project, plans, edits files, runs commands, and iterates until the task is done, asking for confirmation before anything destructive.
 
 Unlike chat-based coding assistants that only print code blocks for you to manually copy, khanagent **acts directly** on your codebase: reading, writing, editing files, searching across your project, and executing shell commands — all driven by an LLM that decides which tools to call and when.
 
@@ -80,7 +82,7 @@ Enterprise/hosted infrastructure (Bedrock/Vertex/Foundry routing, gateways, admi
 
 ### Prerequisites
 
-- **Node.js 18+** — required for native `fetch` and ESM support.
+- **Node.js 22+** — required for native `fetch`, ESM support, and features this project relies on (matches `package.json`'s `engines` field).
 - **Anthropic API key** — set as the `ANTHROPIC_API_KEY` environment variable.
 
 ### Install
