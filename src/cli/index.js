@@ -1,4 +1,7 @@
 import { Command } from "commander";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   loadConfig,
   redactedConfig,
@@ -575,10 +578,18 @@ export async function run(argv) {
   }
 
 
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  // Read directly from package.json rather than hardcoding a version
+  // string here — hardcoding would silently drift out of sync on every
+  // release that bumps package.json but forgets this file exists.
+  // `../../package.json` since this file lives at `src/cli/index.js`.
+  const { version } = JSON.parse(fs.readFileSync(path.join(__dirname, "../../package.json"), "utf-8"));
+
   const program = new Command();
   program
     .name("khanagent")
     .description("A terminal-native AI coding agent — describe a goal, watch it build.")
+    .version(version, "-V, --version", "Print the installed khanagent version")
     .argument("[request]", "One-shot request; omit to start an interactive session")
     .option("--resume <id>", "Resume a saved session ('last' for most recent)")
     .option("--yolo", "Skip destructive-action confirmations for this run")

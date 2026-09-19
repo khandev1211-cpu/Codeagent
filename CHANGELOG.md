@@ -4,6 +4,9 @@ All notable changes to this project are documented here (Keep a Changelog format
 
 ## [Unreleased]
 
+### Fixed
+- **Real bug found via dogfooding the actual published package** (`npm install -g khanagent`, fresh-user walkthrough — docs/14): `--version`/`-V` didn't work at all (`error: unknown option`) — `program.version(...)` was never called in `src/cli/index.js`, so commander had no version flag registered. A published CLI with no way to check its own installed version. Fixed by reading `package.json`'s `version` field directly (not hardcoding a duplicate string that would drift on every future release) and wiring it into `program.version()`. Regression-tested against the real `bin/cli.js` subprocess, not an internal function call — the bug was specifically about the actual invocation surface, which only a real subprocess test can catch.
+
 ### Added
 - `package.json` metadata for npm discoverability: `keywords`, `repository`, `homepage`, `bugs` — none of these existed before the first real publish, meaning the package wouldn't surface in npm search and the npm package page had no link back to the source repository.
 - npm version/downloads badges in `README.md`, now that the package is actually live on the registry.
