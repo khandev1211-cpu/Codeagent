@@ -35,6 +35,7 @@ This is the full documentation set for **khanagent**, a terminal-native AI codin
 | 29 | [Agent SDK](./29-agent-sdk.md) | `khanagent/sdk` subpath, curated surface, stability contract |
 | 30 | [Folder Trust](./30-folder-trust.md) | First-time-per-folder consent gate, `~/.khanagent/trustedFolders.json`, `--trust`, `khanagent trust` |
 | 31 | [Autonomous Mode](./31-autonomous-mode.md) | Manus-inspired mandatory planning, recitation, self-verification — `--autonomous`, `config.autonomousMode` |
+| 32 | [Structured Output & Git Tools](./32-structured-output-and-git-tools.md) | `--output-format json`/`stream-json` for scripting; read-only `git_status`/`git_diff` tools |
 
 ## How to use this set
 

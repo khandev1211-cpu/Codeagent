@@ -19,6 +19,15 @@ describe("shouldRequireFolderTrust", () => {
     expect(shouldRequireFolderTrust(argv("--autonomous", "build the feature"))).toBe(true);
   });
 
+  it("skips the value of --output-format when finding the command (so `--output-format json config` stays exempt)", () => {
+    expect(shouldRequireFolderTrust(argv("--output-format", "json", "config"))).toBe(false);
+    expect(shouldRequireFolderTrust(argv("--output-format", "json", "fix it"))).toBe(true);
+  });
+
+  it("requires trust for init-skills, since it writes into the project", () => {
+    expect(shouldRequireFolderTrust(argv("init-skills"))).toBe(true);
+  });
+
   it("does not require trust for --help or --version, regardless of other args", () => {
     expect(shouldRequireFolderTrust(argv("--help"))).toBe(false);
     expect(shouldRequireFolderTrust(argv("-h"))).toBe(false);

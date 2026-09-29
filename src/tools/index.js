@@ -4,11 +4,12 @@ import { editFile } from "./editFile.js";
 import { listDir } from "./listDir.js";
 import { searchCode } from "./searchCode.js";
 import { runBash } from "./runBash.js";
+import { gitStatus, gitDiff } from "./git.js";
 import { ToolRegistry } from "./registry.js";
 
 // Adding a tool: create a file matching this shape, add it to this list.
 // No other file needs to change (doc 05 / doc 11).
-export const BUILTIN_TOOLS = [readFile, writeFile, editFile, listDir, searchCode, runBash];
+export const BUILTIN_TOOLS = [readFile, writeFile, editFile, listDir, searchCode, runBash, gitStatus, gitDiff];
 
 export function createDefaultRegistry() {
   return new ToolRegistry(BUILTIN_TOOLS);

@@ -1,4 +1,6 @@
-import { Command } from "commander";
+import { Command, Option } from "commander";
+import { initSkills } from "../skills/init.js";
+import { createJsonOutput, isJsonFormat, jsonLoggerSink, OUTPUT_FORMATS } from "./outputFormat.js";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -61,7 +63,8 @@ function buildCliConfigOverrides(opts) {
   return overrides;
 }
 
-async function oneShot(request, { config, logger, cwd }) {
+async function oneShot(request, { config, logger, cwd, outputFormat = "text" }) {
+  const json = isJsonFormat(outputFormat) ? createJsonOutput({ format: outputFormat }) : null;
   const provider = getProvider(config, { logger });
   const toolRegistry = createDefaultRegistry();
   const usageTracker = new UsageTracker();
@@ -129,6 +132,11 @@ async function oneShot(request, { config, logger, cwd }) {
       cwd,
       plan: plannerOutput,
       onEvent: (event) => {
+        if (json) {
+          json.onEvent(event);
+          if (event.type === "tool_declined" && event.reason === "no-tty") process.exitCode = 1;
+          return;
+        }
         if (event.type === "tool_call") renderToolCall(event.tool, event.input);
         if (event.type === "tool_declined") {
           renderToolDeclined(event.tool, event.reason);
@@ -145,13 +153,22 @@ async function oneShot(request, { config, logger, cwd }) {
     sessionStore.syncDiffTracker(session, diffTracker);
     await sessionStore.save(session);
     const quotaStatus = await recordTurnUsage({ usageTracker, cwd, config, usage: result.usage });
+    if (json) {
+      if (process.exitCode === undefined) process.exitCode = 0;
+      json.finish({ ok: process.exitCode === 0, exitCode: process.exitCode, sessionId: session.id, usage: result.usage });
+      return;
+    }
     if (quotaStatus?.overQuota) {
       renderText(`(quota) ${quotaStatus.provider} estimated spend this month: $${quotaStatus.spent.toFixed(2)} / $${quotaStatus.limit} limit.`);
     }
     if (process.exitCode === undefined) process.exitCode = 0;
   } catch (err) {
-    renderError(err.message);
     process.exitCode = err instanceof LimitExceededError ? 2 : 1;
+    if (json) {
+      json.finish({ ok: false, exitCode: process.exitCode, sessionId: session.id, error: err.message });
+    } else {
+      renderError(err.message);
+    }
   } finally {
     await hookRegistry.run(HOOK_EVENTS.SESSION_END, { sessionId: session.id, cwd });
     await closeAllMcpClients(mcpClients);
@@ -267,6 +284,15 @@ function permissionsCommand({ cwd }) {
     renderText(`${rule.behavior === "deny" ? "deny " : "allow"}  [${rule.tool}] ${rule.pattern}`);
   }
   renderText('\nDeny always wins over allow when both match the same call. Run with --plan to preview destructive actions without performing them.');
+}
+
+function initSkillsCommand({ cwd, force }) {
+  const { copied, skipped, dest } = initSkills({ cwd, force });
+  renderText(`Installed ${copied.length} skill(s) into ${dest}`);
+  if (skipped.length > 0) {
+    renderText(`Skipped ${skipped.length} that already exist (use --force to overwrite): ${skipped.slice(0, 5).join(", ")}${skipped.length > 5 ? ", ..." : ""}`);
+  }
+  if (copied.length > 0) renderText('Run "khanagent skills" to see them.');
 }
 
 function skillsCommand({ cwd }) {
@@ -497,7 +523,7 @@ export function shouldRunFirstTimeSetup(argv, { homedir } = {}) {
  * itself — otherwise `--model gpt-5 config` would misread "gpt-5" (which
  * doesn't start with "-") as the command name instead of "config".
  */
-const VALUE_TAKING_FLAGS = new Set(["--model", "--provider", "--resume"]);
+const VALUE_TAKING_FLAGS = new Set(["--model", "--provider", "--resume", "--output-format"]);
 
 export function shouldRequireFolderTrust(argv) {
   const args = argv.slice(2);
@@ -597,7 +623,12 @@ export async function run(argv) {
     .option("--autonomous", "Manus-inspired workflow: mandatory planning, plan recitation on long turns, self-verification before finishing, no confirmation prompts (implies --yolo). Sandboxing and allowedWritePaths are unchanged (docs/31)")
     .option("--trust", "Trust the current folder for khanagent, without the first-time confirmation prompt (for CI/scripts/Docker; docs/30)")
     .option("--model <name>", "Override the configured model")
-    .option("--provider <name>", "Override the configured provider");
+    .option("--provider <name>", "Override the configured provider")
+    .addOption(
+      new Option("--output-format <format>", "One-shot output: text (default), json (single result object), or stream-json (NDJSON events)")
+        .choices(OUTPUT_FORMATS)
+        .default("text")
+    );
 
   program
     .command("undo [ref]")
@@ -671,6 +702,19 @@ export async function run(argv) {
     .description("List skills discovered in .khanagent/skills/")
     .action(() => {
       skillsCommand({ cwd: process.cwd() });
+    });
+
+  program
+    .command("init-skills")
+    .description("Copy the bundled example skills into this project's .khanagent/skills/ (existing skills are kept)")
+    .option("--force", "Overwrite skills that already exist")
+    .action(function () {
+      try {
+        initSkillsCommand({ cwd: process.cwd(), force: Boolean(this.opts().force) });
+      } catch (err) {
+        renderError(err.message);
+        process.exitCode = 1;
+      }
     });
 
   program
@@ -838,34 +882,49 @@ export async function run(argv) {
 
   program.action(async (request, opts) => {
     const cwd = process.cwd();
+    const outputFormat = opts.outputFormat || "text";
+    const jsonMode = isJsonFormat(outputFormat);
+
+    // Any failure before the agent starts still yields the one result line a
+    // JSON consumer is waiting for, instead of a bare stderr message.
+    const failEarly = (message) => {
+      process.exitCode = 1;
+      if (jsonMode) createJsonOutput({ format: outputFormat }).finish({ ok: false, exitCode: 1, error: message });
+      else renderError(message);
+    };
+
+    if (jsonMode && !request) {
+      renderError("--output-format json/stream-json only applies to one-shot requests: khanagent --output-format json \"<request>\"");
+      process.exitCode = 1;
+      return;
+    }
+
     let config;
     try {
       config = loadConfig(buildCliConfigOverrides(opts), { cwd });
     } catch (err) {
       if (err instanceof ConfigError) {
-        renderError(err.message);
-        process.exitCode = 1;
+        failEarly(err.message);
         return;
       }
       throw err;
     }
 
-    const logger = createLogger({ level: config.logLevel });
+    const logger = createLogger({ level: config.logLevel, ...(jsonMode ? { sink: jsonLoggerSink } : {}) });
     const provider = getProvider(config, { logger });
 
     if (provider.requiresApiKey !== false) {
       const key = await resolveApiKey({ provider: config.provider, apiKeyEnvVar: config.apiKeyEnvVar, logger });
       if (!key) {
-        renderError(
+        failEarly(
           `No API key found for ${config.provider}. Set ${config.apiKeyEnvVar} in your shell, or run "khanagent setup" to save one.`
         );
-        process.exitCode = 1;
         return;
       }
     }
 
     if (request) {
-      await oneShot(request, { config, logger, cwd });
+      await oneShot(request, { config, logger, cwd, outputFormat });
       return;
     }
     await interactive({ config, logger, cwd, resumeId: opts.resume });

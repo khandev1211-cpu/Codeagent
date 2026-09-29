@@ -73,3 +73,15 @@ No new tool was needed to let the model actually read a skill's *body*. `.khanag
 - `test/skills/registry.test.js` — `list`/`has`/`get`, and `formatIndexForPrompt`'s null-when-empty behavior.
 - `test/agent/systemPrompt.test.js` — the skills section's position (after admin prompt, before project context) and that it's omitted entirely when there's nothing to show.
 - The full 102-skill library itself was verified at real scale after every batch of 5 during authoring: clean discovery (0 warnings), 0 duplicate names, 0 skills missing required frontmatter fields, and the actual system prompt index measured (not estimated) at each checkpoint — not just unit-tested against small synthetic fixtures.
+
+## Getting the bundled skills into a project (`khanagent init-skills`)
+
+Skills are discovered per project (`.khanagent/skills/`), so the 102 example skills that ship with khanagent are not active anywhere by default. Run:
+
+```bash
+khanagent init-skills          # copy the bundled skills into ./.khanagent/skills/
+khanagent init-skills --force  # also overwrite skills that already exist
+khanagent skills               # list what is now discovered
+```
+
+Existing skill folders are skipped, not overwritten, so customised skills survive a re-run. This is deliberately opt-in: installing the package must not silently add 102 skills to every user's system prompt. The command writes into the project, so it goes through the folder-trust gate (`docs/30`).

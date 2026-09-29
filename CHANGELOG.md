@@ -4,6 +4,16 @@ All notable changes to this project are documented here (Keep a Changelog format
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-09-30
+
+### Added
+- **`khanagent init-skills [--force]`** and the 102 example skills now actually ship in the npm package (`.khanagent/skills` added to `package.json` `files`). Before this, the skills existed only in the git repo: skills are discovered per project, so an `npm install -g khanagent` user had none and no way to get them. `init-skills` copies them into the current project's `.khanagent/skills/`; existing skill folders are never overwritten unless `--force`. Opt-in by design, so upgrading doesn't silently add 102 skills to anyone's system prompt. The command is folder-trust gated because it writes into the project. See `docs/19`.
+- **`--output-format <text|json|stream-json>`** for one-shot runs: `json` prints a single result object, `stream-json` prints NDJSON events followed by the same result line. stdout carries only JSON (logs go to stderr); exactly one `{"type":"result"}` line is always emitted, including for config/API-key/provider failures. Tool output content is never included in events. See `docs/32`.
+- **`git_status` and `git_diff` tools** — read-only, no confirmation prompt. Run via `execFile` (no shell), refs are allow-listed and may not start with `-` (blocks `--output=<file>`), paths go after `--` and must stay inside the project, external diff/textconv/fsmonitor programs are disabled. See `docs/32`.
+
+### Fixed
+- The folder-trust gate didn't know `--output-format` takes a value, so it read the value (`json`) as the command name: `khanagent --output-format json config` wrongly asked for folder trust. Added to the gate's value-taking-flag list; regression-tested.
+
 ## [0.1.3] - 2026-09-30
 
 ### Fixed
