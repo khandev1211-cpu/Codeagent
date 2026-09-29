@@ -4,6 +4,13 @@ All notable changes to this project are documented here (Keep a Changelog format
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-09-30
+
+### Fixed
+- `package.json` had malformed JSON formatting (stray leading whitespace); normalized. Version bumped to 0.1.3.
+
+## [0.1.0 – 0.1.2] (earlier notes, not split per version)
+
 ### Fixed
 - **Real bug found via dogfooding the actual published package** (`npm install -g khanagent`, fresh-user walkthrough — docs/14): `--version`/`-V` didn't work at all (`error: unknown option`) — `program.version(...)` was never called in `src/cli/index.js`, so commander had no version flag registered. A published CLI with no way to check its own installed version. Fixed by reading `package.json`'s `version` field directly (not hardcoding a duplicate string that would drift on every future release) and wiring it into `program.version()`. Regression-tested against the real `bin/cli.js` subprocess, not an internal function call — the bug was specifically about the actual invocation surface, which only a real subprocess test can catch.
 
