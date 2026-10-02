@@ -13,6 +13,22 @@ function newSessionId() {
   return crypto.randomBytes(6).toString("hex");
 }
 
+const ID_PATTERN = /^[0-9a-f]{12}$/;
+const MAX_NAME_LENGTH = 60;
+
+/** Trims and validates a user-supplied session name. Throws a readable Error. */
+export function normalizeSessionName(raw) {
+  const name = String(raw ?? "").trim();
+  if (!name) throw new Error("Session name can't be empty.");
+  if (name.length > MAX_NAME_LENGTH) throw new Error(`Session name is too long (max ${MAX_NAME_LENGTH} characters).`);
+  if (/[\u0000-\u001f\u007f]/.test(name)) throw new Error("Session name can't contain control characters.");
+  // Names are resolved after ids, so an id-shaped name (or "last") could never be reached.
+  if (ID_PATTERN.test(name) || name.toLowerCase() === "last") {
+    throw new Error(`"${name}" is reserved (it looks like a session id, or is the keyword "last"). Pick another name.`);
+  }
+  return name;
+}
+
 export class SessionStore {
   constructor({ homedir = os.homedir(), projectRoot = process.cwd() } = {}) {
     this.dir = sessionsDir(homedir);
@@ -76,6 +92,58 @@ export class SessionStore {
       }
     }
     return sessions;
+  }
+
+  /**
+   * Finds a session by exact id or by name (case-insensitive), scoped to
+   * this project for names. Ids are only accepted in their real shape, so a
+   * reference like "../../x" can never be turned into a file path.
+   * Returns null when nothing matches; throws if a name is ambiguous.
+   */
+  async resolve(ref) {
+    const wanted = String(ref ?? "").trim();
+    if (!wanted) return null;
+    if (ID_PATTERN.test(wanted)) {
+      try {
+        return await this.load(wanted);
+      } catch {
+        return null;
+      }
+    }
+    const matches = (await this.list()).filter(
+      (s) => s.projectRoot === this.projectRoot && s.name && s.name.toLowerCase() === wanted.toLowerCase()
+    );
+    if (matches.length > 1) {
+      throw new Error(`More than one session is named "${wanted}" (${matches.map((m) => m.id).join(", ")}). Use an id instead.`);
+    }
+    return matches[0] || null;
+  }
+
+  /** Gives a session a name, unique within this project. Persists immediately. */
+  async rename(session, rawName) {
+    const name = normalizeSessionName(rawName);
+    const clash = (await this.list()).find(
+      (s) => s.projectRoot === session.projectRoot && s.id !== session.id && s.name && s.name.toLowerCase() === name.toLowerCase()
+    );
+    if (clash) throw new Error(`Another session in this project is already named "${name}" (${clash.id}).`);
+    session.name = name;
+    return this.save(session);
+  }
+
+  /**
+   * Branches a session: the new session starts from a copy of the same
+   * conversation and then diverges independently. The undo history is NOT
+   * copied — it points at file changes made in the original session, and two
+   * sessions both able to revert the same change would be a trap. Undo
+   * remains available in the session that made the change.
+   */
+  async fork(session, { name } = {}) {
+    const fork = this.create({ provider: session.provider, model: session.model });
+    fork.projectRoot = session.projectRoot;
+    fork.messages = structuredClone(session.messages);
+    fork.forkedFrom = session.id;
+    await this.save(fork);
+    return name ? this.rename(fork, name) : fork;
   }
 
   diffTrackerFor(session) {

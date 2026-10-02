@@ -4,6 +4,15 @@ All notable changes to this project are documented here (Keep a Changelog format
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-09-30
+
+### Added
+- **Session names and forking.** `khanagent rename-session <ref> <name>`, `khanagent fork [ref] [--name <name>]`, and `--resume` now accepts a name as well as an id. `khanagent sessions` shows names and fork parents. Names are unique per project and can't look like an id or be `last`. A fork copies the conversation but deliberately **not** the undo history (two sessions able to revert the same change would be a trap). See `docs/08`.
+
+### Fixed
+- `khanagent skills | head` (any command whose reader closes the pipe early) printed a raw EPIPE stack trace. It now exits quietly; other stream errors still surface. Regression-tested.
+- `--resume <ref>` could build a file path from an arbitrary string (e.g. `../../x`). References are now only accepted as a real session id or a name.
+
 ## [0.1.4] - 2026-09-30
 
 ### Added

@@ -190,9 +190,14 @@ async function interactive({ config, logger, cwd, resumeId }) {
     }
   } else if (resumeId) {
     try {
-      session = await sessionStore.load(resumeId);
-    } catch {
-      renderError(`No session found with id ${resumeId}`);
+      session = await sessionStore.resolve(resumeId);
+    } catch (err) {
+      renderError(err.message);
+      process.exitCode = 1;
+      return;
+    }
+    if (!session) {
+      renderError(`No session found with id or name "${resumeId}"`);
       process.exitCode = 1;
       return;
     }
@@ -259,8 +264,33 @@ async function sessionsCommand({ cwd }) {
     return;
   }
   for (const s of sessions.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))) {
-    renderText(`${s.id}  ${s.updatedAt}  ${s.provider}/${s.model}  (${s.messages.length} messages)`);
+    const label = s.name ? `  "${s.name}"` : "";
+    const fork = s.forkedFrom ? `  [fork of ${s.forkedFrom}]` : "";
+    renderText(`${s.id}${label}  ${s.updatedAt}  ${s.provider}/${s.model}  (${s.messages.length} messages)${fork}`);
   }
+}
+
+/** `ref` may be an id, a name, or "last" (most recent session of this project). */
+async function findSession(sessionStore, ref) {
+  const session = ref === "last" ? await sessionStore.loadLastForProject() : await sessionStore.resolve(ref);
+  if (!session) throw new Error(`No session found with id or name "${ref}" for this project.`);
+  return session;
+}
+
+async function renameSessionCommand(ref, name, { cwd }) {
+  const sessionStore = new SessionStore({ projectRoot: cwd });
+  const session = await findSession(sessionStore, ref);
+  await sessionStore.rename(session, name);
+  renderText(`Session ${session.id} is now named "${session.name}". Resume it with: khanagent --resume "${session.name}"`);
+}
+
+async function forkCommand(ref, { cwd, name }) {
+  const sessionStore = new SessionStore({ projectRoot: cwd });
+  const source = await findSession(sessionStore, ref || "last");
+  const fork = await sessionStore.fork(source, { name });
+  renderText(`Forked ${source.id} (${source.messages.length} messages) into ${fork.id}${fork.name ? ` "${fork.name}"` : ""}.`);
+  renderText(`Continue it with: khanagent --resume ${fork.name ? `"${fork.name}"` : fork.id}`);
+  renderText("The fork starts with an empty undo history; use `khanagent undo` in the session that made a change.");
 }
 
 function configCommand({ config }) {
@@ -617,7 +647,7 @@ export async function run(argv) {
     .description("A terminal-native AI coding agent — describe a goal, watch it build.")
     .version(version, "-V, --version", "Print the installed khanagent version")
     .argument("[request]", "One-shot request; omit to start an interactive session")
-    .option("--resume <id>", "Resume a saved session ('last' for most recent)")
+    .option("--resume <id|name>", "Resume a saved session by id or name ('last' for most recent)")
     .option("--yolo", "Skip destructive-action confirmations for this run")
     .option("--plan", "Plan mode: describe destructive actions instead of performing them (docs/20)")
     .option("--autonomous", "Manus-inspired workflow: mandatory planning, plan recitation on long turns, self-verification before finishing, no confirmation prompts (implies --yolo). Sandboxing and allowedWritePaths are unchanged (docs/31)")
@@ -642,6 +672,31 @@ export async function run(argv) {
     .description("List saved sessions for this project")
     .action(async () => {
       await sessionsCommand({ cwd: process.cwd() });
+    });
+
+  program
+    .command("rename-session <ref> <name>")
+    .description('Give a session a name (ref = id, name, or "last"); resume it later with --resume "<name>"')
+    .action(async (ref, name) => {
+      try {
+        await renameSessionCommand(ref, name, { cwd: process.cwd() });
+      } catch (err) {
+        renderError(err.message);
+        process.exitCode = 1;
+      }
+    });
+
+  program
+    .command("fork [ref]")
+    .description('Branch a session (default: "last") into a new one that diverges independently')
+    .option("--name <name>", "Name for the new session")
+    .action(async (ref, options) => {
+      try {
+        await forkCommand(ref, { cwd: process.cwd(), name: options.name });
+      } catch (err) {
+        renderError(err.message);
+        process.exitCode = 1;
+      }
     });
 
   const configCmd = program

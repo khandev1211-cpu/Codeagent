@@ -135,7 +135,7 @@ The agent will:
 ```
 khanagent                        Start interactive session in current directory
 khanagent "do X"                 One-shot: run a single request, print result, exit
-khanagent --resume <id>          Resume a specific saved session
+khanagent --resume <id|name>    Resume a specific saved session (by id or name)
 khanagent --resume last          Resume the most recent session for this project
 khanagent --yolo                 Skip destructive-action confirmations for this run
 khanagent --plan                 Plan mode: describe destructive actions instead of performing them
@@ -147,6 +147,8 @@ khanagent mistral-models         List Mistral models live from your API key
 khanagent undo                   Revert the most recent destructive change
 khanagent undo <ref>             Revert a specific recorded change
 khanagent sessions               List saved sessions for this project
+khanagent rename-session <ref> <name>  Name a session (ref = id, name or "last")
+khanagent fork [ref] [--name n]  Branch a session into a new, independent one
 khanagent config                 Print the fully resolved config (API key redacted)
 khanagent hooks                  List hooks configured for this project (.khanagent/hooks.json)
 khanagent skills                  List skills discovered in .khanagent/skills/

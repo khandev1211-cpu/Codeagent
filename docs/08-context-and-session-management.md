@@ -49,3 +49,17 @@ This powers an `khanagent undo` command that can revert the most recent destruct
 ## Interaction between the two systems
 
 Context summarization (above) operates on the *conversation* the model sees. The Diff Tracker operates on *actual file state* and is never summarized or pruned for space — every destructive change stays fully recorded for the life of the session (and prunable only via explicit user action, e.g. clearing session history), since undo capability is a safety guarantee, not something that should degrade as a session gets long.
+
+## Naming, resuming by name, and forking sessions
+
+```bash
+khanagent sessions                          # id, name, provider/model, message count, fork parent
+khanagent rename-session last "auth work"   # ref = id, name, or "last"
+khanagent --resume "auth work"              # resume by id OR name (case-insensitive)
+khanagent fork "auth work" --name try-redis # branch the conversation; ref defaults to "last"
+```
+
+- **Names** are 1-60 characters, no control characters, unique per project (case-insensitive). A name that looks like a session id (12 hex characters) or is the word `last` is rejected, because ids and `last` are resolved first and such a name could never be reached.
+- **Resolution** accepts an id only in its real 12-hex shape, so a reference such as `../../x` can never be turned into a file path.
+- **Fork** copies the message history into a brand-new session (`forkedFrom` records the parent) that then diverges independently; the original is not modified. The **undo history is deliberately not copied**: it points at file changes the original session made, and two sessions both able to revert the same change would be a trap. Run `khanagent undo` in the session that made the change.
+- `rename-session` and `fork` only touch `~/.khanagent/sessions/`, never the project, so like `sessions` they are exempt from the folder-trust gate.

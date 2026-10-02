@@ -116,6 +116,8 @@ export const TRUST_EXEMPT_COMMANDS = new Set([
   "hooks",
   "permissions",
   "sessions",
+  "rename-session",
+  "fork",
   "usage",
   "quota",
   "trust",
