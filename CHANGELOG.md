@@ -4,6 +4,13 @@ All notable changes to this project are documented here (Keep a Changelog format
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-10-03
+
+### Fixed
+- **Setup wizard quit right after the API key was entered**, before the model could be chosen (reported on Windows; the cause is platform-independent). The hidden-input prompt paused `process.stdin` when it finished, but the `readline` interface that asks the next question (model, keychain) never resumes a stdin it did not pause itself, so the prompt printed and the process then exited. The prompt now restores the pause state it found.
+- **The "hidden" API key was echoed to the screen in plain text.** `readline` (terminal mode) listens for keypresses on the same stdin and echoes them. Its keypress listeners are now detached while the key is typed and restored afterwards, including when the key is rejected and asked for again.
+- Both are covered by regression tests (they failed before the fix) and were verified end to end in a real pseudo-terminal: provider -> key (no echo) -> model -> keychain -> "Setup complete", and the process exits on its own.
+
 ## [0.1.6] - 2026-09-30
 
 ### Added

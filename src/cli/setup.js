@@ -287,6 +287,20 @@ export class SetupWizard {
           return;
         }
 
+        // Two things have to be undone afterwards, and both used to be wrong:
+        //
+        // 1. Pause state. The readline interface that asks the next question
+        //    (model, keychain) does not resume a stdin it did not pause
+        //    itself. Pausing here made the next prompt print and the process
+        //    exit right after the API key was entered. Restore the state we
+        //    found instead of forcing "paused".
+        // 2. readline's own keypress listener. In terminal mode it echoes every
+        //    key it sees, so the "hidden" API key was printed in plain text.
+        //    Detach it while the key is typed and put it back afterwards.
+        const wasPaused = typeof stdin.isPaused === "function" ? stdin.isPaused() : false;
+        const keypressListeners = stdin.listeners("keypress");
+        for (const listener of keypressListeners) stdin.removeListener("keypress", listener);
+
         stdin.setRawMode(true);
         stdin.setEncoding("utf8");
         stdin.resume();
@@ -297,7 +311,8 @@ export class SetupWizard {
         const cleanup = () => {
           stdin.removeListener("data", onData);
           stdin.setRawMode(Boolean(originalMode));
-          stdin.pause();
+          for (const listener of keypressListeners) stdin.on("keypress", listener);
+          if (wasPaused) stdin.pause();
         };
 
         const onData = (chunk) => {
