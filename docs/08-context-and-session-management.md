@@ -63,3 +63,19 @@ khanagent fork "auth work" --name try-redis # branch the conversation; ref defau
 - **Resolution** accepts an id only in its real 12-hex shape, so a reference such as `../../x` can never be turned into a file path.
 - **Fork** copies the message history into a brand-new session (`forkedFrom` records the parent) that then diverges independently; the original is not modified. The **undo history is deliberately not copied**: it points at file changes the original session made, and two sessions both able to revert the same change would be a trap. Run `khanagent undo` in the session that made the change.
 - `rename-session` and `fork` only touch `~/.khanagent/sessions/`, never the project, so like `sessions` they are exempt from the folder-trust gate.
+
+## Rewinding a conversation (`khanagent rewind`)
+
+```bash
+khanagent rewind --list                        # numbered turns of the latest session
+khanagent rewind                               # drop the last turn
+khanagent rewind "auth work" --turns 2         # drop the last 2 turns
+khanagent rewind last --to 3 --name before-redis   # keep only turns 1-2
+```
+
+Rewind is **non-destructive**: it creates a NEW session (a fork, see above) containing the conversation up to the chosen point, and leaves the original exactly as it was. There is deliberately no in-place mode; if you want the old state back, it is still there.
+
+- A *turn* starts at a real user message. Tool results are also stored as `role: "user"` messages, so they are not counted as turns, and a cut never lands between an assistant `tool_use` and its `tool_result` (the provider would reject that conversation).
+- Rewinding to before turn 1, or dropping every turn, is refused: that is a new session, not a rewind.
+- **Files are not reverted.** Rewind only changes the conversation. Edits the dropped turns made to your files stay on disk; revert them with `khanagent undo` in the session that made them. The new session starts with an empty undo history, same as `fork`.
+- Like `sessions`/`fork`/`rename-session`, it only touches `~/.khanagent/sessions/` and is exempt from the folder-trust gate.

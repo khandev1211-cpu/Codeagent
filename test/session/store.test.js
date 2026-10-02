@@ -111,10 +111,24 @@ describe("SessionStore: names, resolve, fork", () => {
       expect((await store.load(original.id)).diffTrackerEntries).toEqual([{ id: "d1" }]);
     });
 
-    it("a rejected fork name does not leave the fork unnamed-and-hidden: error propagates, original untouched", async () => {
+    it("a rejected fork name leaves no orphan fork behind", async () => {
       const original = await seed();
       await expect(store.fork(original, { name: "last" })).rejects.toThrow(/reserved/);
-      expect((await store.load(original.id)).forkedFrom).toBeUndefined();
+      expect(await store.list()).toHaveLength(1);
+    });
+
+    it("a duplicate fork name is rejected before anything is written", async () => {
+      const original = await seed();
+      await store.rename(original, "taken");
+      await expect(store.fork(original, { name: "Taken" })).rejects.toThrow(/already named/);
+      expect(await store.list()).toHaveLength(1);
+    });
+
+    it("can fork from a supplied (e.g. truncated) message list", async () => {
+      const original = await seed([{ role: "user", content: "a" }, { role: "assistant", content: "b" }]);
+      const fork = await store.fork(original, { messages: [{ role: "user", content: "a" }] });
+      expect(fork.messages).toHaveLength(1);
+      expect((await store.load(original.id)).messages).toHaveLength(2);
     });
   });
 });

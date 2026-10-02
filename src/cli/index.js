@@ -1,5 +1,6 @@
 import { Command, Option } from "commander";
 import { initSkills } from "../skills/init.js";
+import { dropLastTurns, listTurns, rewindToTurn } from "../session/rewind.js";
 import { createJsonOutput, isJsonFormat, jsonLoggerSink, OUTPUT_FORMATS } from "./outputFormat.js";
 import fs from "node:fs";
 import path from "node:path";
@@ -282,6 +283,31 @@ async function renameSessionCommand(ref, name, { cwd }) {
   const session = await findSession(sessionStore, ref);
   await sessionStore.rename(session, name);
   renderText(`Session ${session.id} is now named "${session.name}". Resume it with: khanagent --resume "${session.name}"`);
+}
+
+async function rewindCommand(ref, { cwd, name, list, to, turns }) {
+  const sessionStore = new SessionStore({ projectRoot: cwd });
+  const source = await findSession(sessionStore, ref || "last");
+
+  if (list) {
+    const all = listTurns(source.messages);
+    if (all.length === 0) renderText("This session has no user turns yet.");
+    for (const t of all) renderText(`${String(t.number).padStart(3)}  ${t.preview}`);
+    return;
+  }
+  if (to !== undefined && turns !== undefined) throw new Error("Use either --to or --turns, not both.");
+
+  const cut =
+    to !== undefined
+      ? rewindToTurn(source.messages, Number(to))
+      : dropLastTurns(source.messages, turns === undefined ? 1 : Number(turns));
+
+  const rewound = await sessionStore.fork(source, { name, messages: cut.messages });
+  renderText(
+    `Rewound ${source.id}: dropped ${cut.dropped} turn(s), kept ${cut.remaining}. New session ${rewound.id}${rewound.name ? ` "${rewound.name}"` : ""}.`
+  );
+  renderText(`Continue it with: khanagent --resume ${rewound.name ? `"${rewound.name}"` : rewound.id}`);
+  renderText(`The original session ${source.id} is untouched. Files changed by the dropped turns are NOT reverted; use \`khanagent undo\` in that session for that.`);
 }
 
 async function forkCommand(ref, { cwd, name }) {
@@ -693,6 +719,22 @@ export async function run(argv) {
     .action(async (ref, options) => {
       try {
         await forkCommand(ref, { cwd: process.cwd(), name: options.name });
+      } catch (err) {
+        renderError(err.message);
+        process.exitCode = 1;
+      }
+    });
+
+  program
+    .command("rewind [ref]")
+    .description('Cut a session back to an earlier turn, as a NEW session (default ref: "last"; drops the last turn)')
+    .option("--list", "List the session's turns and exit")
+    .option("--to <n>", "Keep only the turns before turn <n>")
+    .option("--turns <k>", "Drop the last <k> turns")
+    .option("--name <name>", "Name for the new session")
+    .action(async (ref, options) => {
+      try {
+        await rewindCommand(ref, { cwd: process.cwd(), ...options });
       } catch (err) {
         renderError(err.message);
         process.exitCode = 1;

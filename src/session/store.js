@@ -119,14 +119,19 @@ export class SessionStore {
     return matches[0] || null;
   }
 
-  /** Gives a session a name, unique within this project. Persists immediately. */
-  async rename(session, rawName) {
+  /** Validates `rawName` and checks it's free in the session's project. Returns the normalized name. */
+  async #checkedName(session, rawName) {
     const name = normalizeSessionName(rawName);
     const clash = (await this.list()).find(
       (s) => s.projectRoot === session.projectRoot && s.id !== session.id && s.name && s.name.toLowerCase() === name.toLowerCase()
     );
     if (clash) throw new Error(`Another session in this project is already named "${name}" (${clash.id}).`);
-    session.name = name;
+    return name;
+  }
+
+  /** Gives a session a name, unique within this project. Persists immediately. */
+  async rename(session, rawName) {
+    session.name = await this.#checkedName(session, rawName);
     return this.save(session);
   }
 
@@ -137,13 +142,14 @@ export class SessionStore {
    * sessions both able to revert the same change would be a trap. Undo
    * remains available in the session that made the change.
    */
-  async fork(session, { name } = {}) {
+  async fork(session, { name, messages } = {}) {
     const fork = this.create({ provider: session.provider, model: session.model });
     fork.projectRoot = session.projectRoot;
-    fork.messages = structuredClone(session.messages);
+    fork.messages = structuredClone(messages ?? session.messages);
     fork.forkedFrom = session.id;
-    await this.save(fork);
-    return name ? this.rename(fork, name) : fork;
+    // Validated before anything is written, so a bad name leaves no orphan fork behind.
+    if (name !== undefined) fork.name = await this.#checkedName(fork, name);
+    return this.save(fork);
   }
 
   diffTrackerFor(session) {

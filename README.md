@@ -149,6 +149,7 @@ khanagent undo <ref>             Revert a specific recorded change
 khanagent sessions               List saved sessions for this project
 khanagent rename-session <ref> <name>  Name a session (ref = id, name or "last")
 khanagent fork [ref] [--name n]  Branch a session into a new, independent one
+khanagent rewind [ref] [--list|--to n|--turns k]  Cut a session back to an earlier turn (as a new session)
 khanagent config                 Print the fully resolved config (API key redacted)
 khanagent hooks                  List hooks configured for this project (.khanagent/hooks.json)
 khanagent skills                  List skills discovered in .khanagent/skills/

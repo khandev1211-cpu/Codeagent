@@ -4,6 +4,14 @@ All notable changes to this project are documented here (Keep a Changelog format
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-09-30
+
+### Added
+- **`khanagent rewind [ref] [--list | --to <n> | --turns <k>] [--name <name>]`** — cut a conversation back to an earlier turn. Non-destructive: produces a NEW session and leaves the original untouched. Turn boundaries are real user messages only, so a cut never splits an assistant `tool_use` from its `tool_result`; rewinding to an empty conversation is refused. Files changed by the dropped turns are not reverted (use `khanagent undo`). See `docs/08`.
+
+### Fixed
+- `SessionStore.fork` with an invalid or duplicate name used to save the fork first and fail afterwards, leaving an orphan unnamed session. The name is now validated before anything is written.
+
 ## [0.1.5] - 2026-09-30
 
 ### Added
