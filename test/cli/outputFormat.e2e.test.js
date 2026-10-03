@@ -46,7 +46,7 @@ describe("--output-format (real subprocess, fake LLM)", () => {
     execFileSync("git", ["init", "-q"], { cwd: project });
     fs.writeFileSync(
       path.join(home, ".khanagentrc"),
-      JSON.stringify({ provider: "ollama", model: "fake", apiKeyEnvVar: "UNUSED_KEY", providers: { ollama: { apiKeyEnvVar: "UNUSED_KEY" } }, ollamaBaseUrl: fake.url })
+      JSON.stringify({ provider: "ollama", model: "fake", apiKeyEnvVar: "UNUSED_KEY", providers: { ollama: { apiKeyEnvVar: "UNUSED_KEY" } }, ollamaBaseUrl: fake.url, sandboxMode: "off" })
     );
     env = { ...process.env, HOME: home, USERPROFILE: home, KHANAGENT_PLAIN_REPL: "1" };
   });
@@ -58,7 +58,9 @@ describe("--output-format (real subprocess, fake LLM)", () => {
   });
 
   it("json: stdout is a single parseable result object", async () => {
-    const { code, stdout } = await runCli(["--trust", "--output-format", "json", "check repo"], { env, cwd: project });
+    const { code, stdout, stderr } = await runCli(["--trust", "--yolo", "--output-format", "json", "check repo"], { env, cwd: project });
+    // the unsandboxed-bypass notice (sandboxMode is "off" in this config) must go to stderr only
+    expect(stderr).toMatch(/Warning: --yolo skips confirmation and sandboxMode is set to off/);
     const lines = stdout.trim().split("\n");
     expect(lines).toHaveLength(1);
     const result = JSON.parse(lines[0]);

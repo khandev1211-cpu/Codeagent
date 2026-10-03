@@ -4,6 +4,16 @@ All notable changes to this project are documented here (Keep a Changelog format
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-10-03
+
+### Added
+- **The system prompt now states the OS and what shell `run_bash` uses.** On Windows `run_bash` runs `cmd.exe`, but the model wasn't told, so it wrote bash (`ls`, `cat`, `export`) that failed. The section is static per machine, so prompts stay deterministic.
+- **Startup warning when `--yolo` / Autonomous Mode is active and no `run_bash` sandbox applies** (all of Windows, Linux without bubblewrap, or `sandboxMode: "off"`). It goes to stderr, so `--output-format json` stays clean. Confirmation is the only guard on those machines and these modes remove it.
+- **Windows CI job** (`windows-latest`, Node 24) running lint + tests + `npm pack --dry-run`. Informational (`continue-on-error`): the suite was written on Linux, so it may surface Windows issues or POSIX-only tests; it makes them visible before a release rather than after.
+
+### Fixed
+- `docs/31` claimed the sandbox is "always active" in Autonomous Mode. That is only true on Linux (bubblewrap) and macOS (sandbox-exec); added the platform caveat.
+
 ## [0.1.7] - 2026-10-03
 
 ### Fixed

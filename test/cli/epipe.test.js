@@ -14,7 +14,8 @@ const BIN = path.resolve(import.meta.dirname, "../../bin/cli.js");
  * behaviour, not an error worth reporting.
  */
 describe("closed stdout pipe (EPIPE)", () => {
-  it("exits quietly, with no stack trace, when the reader closes early", () => {
+  // Needs `sh` and `head`; the same pipe-closing behaviour exists on Windows but cannot be driven this way.
+  it.skipIf(process.platform === "win32")("exits quietly, with no stack trace, when the reader closes early", () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-epipe-home-"));
     const project = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-epipe-proj-"));
     try {

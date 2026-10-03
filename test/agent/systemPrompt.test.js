@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildSystemPrompt } from "../../src/agent/systemPrompt.js";
+import { buildSystemPrompt, describeEnvironment } from "../../src/agent/systemPrompt.js";
 
 describe("buildSystemPrompt", () => {
   it("includes the base tool-use conventions with no other input", () => {
@@ -169,5 +169,37 @@ describe("Autonomous Mode section (docs/31)", () => {
     const autonomousIdx = prompt.indexOf("Autonomous Mode");
     const addendumIdx = prompt.indexOf("ADDENDUM_MARKER");
     expect(autonomousIdx).toBeLessThan(addendumIdx);
+  });
+});
+
+describe("environment section", () => {
+  it("on Windows, tells the model run_bash is cmd.exe and bash tools won't work", () => {
+    const prompt = buildSystemPrompt({ platform: "win32" });
+    expect(prompt).toMatch(/## Environment/);
+    expect(prompt).toMatch(/Windows/);
+    expect(prompt).toMatch(/cmd\.exe, not bash/);
+    expect(prompt).toMatch(/ls, cat, grep/);
+    expect(prompt).not.toMatch(/POSIX-style shell/);
+  });
+
+  it("on Linux and macOS, says run_bash is a POSIX-style shell; macOS notes the BSD userland", () => {
+    expect(buildSystemPrompt({ platform: "linux" })).toMatch(/Linux\. The run_bash tool runs commands through a POSIX-style shell/);
+    expect(buildSystemPrompt({ platform: "darwin" })).toMatch(/macOS.*BSD userland/);
+    expect(buildSystemPrompt({ platform: "linux" })).not.toMatch(/cmd\.exe/);
+  });
+
+  it("falls back to just naming an unknown platform", () => {
+    expect(describeEnvironment("freebsd")).toBe("## Environment\nOperating system: freebsd.");
+  });
+
+  it("defaults to the real platform, and sits right after the base conventions, before the admin prompt", () => {
+    const prompt = buildSystemPrompt({ adminPrompt: "Always be terse." });
+    expect(prompt).toContain(describeEnvironment(process.platform));
+    expect(prompt.indexOf("## Environment")).toBeGreaterThan(prompt.indexOf("terminal-native AI coding agent"));
+    expect(prompt.indexOf("## Environment")).toBeLessThan(prompt.indexOf("Always be terse."));
+  });
+
+  it("stays deterministic for the same platform", () => {
+    expect(buildSystemPrompt({ platform: "win32" })).toBe(buildSystemPrompt({ platform: "win32" }));
   });
 });

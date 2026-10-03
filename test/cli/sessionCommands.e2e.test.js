@@ -73,3 +73,30 @@ describe("session commands (real CLI)", () => {
     expect(bad.stderr).toMatch(/No session found with id or name "nonexistent"/);
   });
 });
+
+describe("unsandboxed-bypass notice (real CLI)", () => {
+  let home, project, env;
+  beforeAll(() => {
+    home = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-nb-home-"));
+    project = fs.mkdtempSync(path.join(os.tmpdir(), "khanagent-nb-proj-"));
+    fs.writeFileSync(
+      path.join(home, ".khanagentrc"),
+      JSON.stringify({ provider: "ollama", model: "m", apiKeyEnvVar: "U", providers: { ollama: { apiKeyEnvVar: "U" } }, sandboxMode: "off" })
+    );
+    env = { ...process.env, HOME: home, USERPROFILE: home, KHANAGENT_PLAIN_REPL: "1" };
+  });
+  afterAll(() => {
+    fs.rmSync(home, { recursive: true, force: true });
+    fs.rmSync(project, { recursive: true, force: true });
+  });
+  const run = (...args) => spawnSync("node", [BIN, "--trust", ...args], { cwd: project, env, encoding: "utf-8", input: "", timeout: 30_000 });
+
+  it("is shown with --yolo and --autonomous when no sandbox confines run_bash", () => {
+    expect(run("--yolo").stderr).toMatch(/Warning: --yolo skips confirmation/);
+    expect(run("--autonomous").stderr).toMatch(/Warning: Autonomous Mode skips confirmation/);
+  });
+
+  it("is NOT shown when confirmation still applies", () => {
+    expect(run().stderr).not.toMatch(/Warning: .* skips confirmation/);
+  });
+});

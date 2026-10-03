@@ -17,6 +17,8 @@ Not from `docs/16`'s Tier 1/2/3 audit — a direction chosen after comparing kha
 
 The row that matters most: **confirmation is what's skipped, not the safety mechanisms underneath it.** A destructive `run_bash` call in Autonomous Mode still can't write outside the sandboxed allowlist, still goes through hooks and permission rules — it just doesn't stop to ask "is this okay?" first, the same way `--yolo` already doesn't. Autonomous Mode is best understood as `--yolo` plus a different *workflow*, not a different *safety* posture.
 
+> **Platform caveat.** "Sandbox still active" holds only where a sandbox exists: bubblewrap on Linux, sandbox-exec on macOS. **On Windows (and on Linux without `bwrap`) there is no `run_bash` sandbox**, so there confirmation is the only guard, and `--yolo` / Autonomous Mode remove it. Commands can then change anything your user account can. khanagent prints a one-line warning to stderr at startup whenever the bypass is active and no sandbox applies (also when you set `sandboxMode: "off"` yourself). Hooks and permission rules still apply everywhere. On such machines use these modes only in a trusted project that is under version control.
+
 ## Enabling it
 
 `--autonomous` (a CLI flag, session-only — does not persist to `~/.khanagentrc` the way `khanagent config set` would) or `config.autonomousMode: boolean` for a standing per-project/global default. Setting `autonomousMode: true` implies the same auto-approve behavior `yolo: true` already provides (reuses `createConfirmer`'s existing yolo branch — no second bypass mechanism written) and additionally changes planning/system-prompt behavior as described below. `--autonomous` on the CLI sets both `config.autonomousMode` and `config.yolo` for that invocation.

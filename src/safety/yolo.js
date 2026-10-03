@@ -17,3 +17,27 @@ export function shouldBypassConfirmation(config) {
 export function logBypass(logger, { toolName, input }) {
   logger?.info(`--yolo bypass: ${toolName}`, { toolName, input, timestamp: new Date().toISOString() });
 }
+
+const PLATFORM_LABELS = { win32: "Windows", darwin: "macOS", linux: "Linux" };
+
+/**
+ * run_bash is only confined (docs/15) where bubblewrap (Linux) or
+ * sandbox-exec (macOS) exists. Elsewhere, including all of Windows, the one
+ * thing standing between a command and the whole filesystem is the
+ * confirmation prompt, and --yolo / Autonomous Mode remove exactly that.
+ * Returns the notice to show when both are true, otherwise null.
+ *
+ * @param {object} config
+ * @param {{sandboxKind: string, platform?: string}} env  sandboxKind: "bubblewrap" | "sandbox-exec" | "none"
+ */
+export function describeUnsandboxedBypass(config, { sandboxKind, platform = process.platform }) {
+  if (!shouldBypassConfirmation(config)) return null;
+  const sandboxOff = config.sandboxMode === "off";
+  if (sandboxKind !== "none" && !sandboxOff) return null;
+
+  const mode = config.autonomousMode ? "Autonomous Mode" : "--yolo";
+  const label = PLATFORM_LABELS[platform] || platform;
+  const why = sandboxOff ? "sandboxMode is set to off" : `there is no run_bash sandbox on ${label}`;
+  return `Warning: ${mode} skips confirmation and ${why}, so shell commands can change anything your user account can. Use it only in a project you trust and keep under version control.`;
+}
+

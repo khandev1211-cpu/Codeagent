@@ -1,5 +1,7 @@
 import { Command, Option } from "commander";
 import { initSkills } from "../skills/init.js";
+import { describeUnsandboxedBypass } from "../safety/yolo.js";
+import { probeSandbox } from "../safety/sandbox.js";
 import { dropLastTurns, listTurns, rewindToTurn } from "../session/rewind.js";
 import { createJsonOutput, isJsonFormat, jsonLoggerSink, OUTPUT_FORMATS } from "./outputFormat.js";
 import fs from "node:fs";
@@ -1019,6 +1021,10 @@ export async function run(argv) {
         return;
       }
     }
+
+    // stderr, not stdout: in --output-format json the notice must not corrupt the JSON.
+    const unsandboxedNotice = describeUnsandboxedBypass(config, { sandboxKind: probeSandbox() });
+    if (unsandboxedNotice) process.stderr.write(`${unsandboxedNotice}\n`);
 
     if (request) {
       await oneShot(request, { config, logger, cwd, outputFormat });

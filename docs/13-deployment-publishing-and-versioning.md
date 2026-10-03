@@ -36,7 +36,8 @@ Run only after the checklist above, and only from a clean working tree on the re
 
 ## CI/CD pipeline (GitHub Actions)
 
-- **On every PR/push:** lint + full test suite (doc 12) across the supported Node version matrix.
+- **On every PR/push:** lint + full test suite (doc 12) across the supported Node version matrix (Linux, required).
+- **Windows (informational):** the same lint + tests on `windows-latest` / Node 24, with `continue-on-error` so a failure is visible but does not block. The suite was written on Linux, so a red Windows job can be a real Windows bug or a POSIX-assuming test; drop `continue-on-error` once it is reliably green.
 - **On a version tag push:** an optional automated publish job can run `npm publish` directly from CI using a scoped npm token, *if* the manual checklist above has already been satisfied and the tag itself represents a reviewed, merged release — this automates the mechanical publish step, it does not replace the manual QA judgment calls.
 
 ## Rollback

@@ -84,6 +84,25 @@ function renderAutonomousMode() {
  * an index only, never full skill content), then everything project-
  * specific.
  */
+/**
+ * Tells the model which OS and shell run_bash really uses. Without this it
+ * writes bash (`ls`, `cat`, `export`) and on Windows, where run_bash runs
+ * cmd.exe, every one of those fails. Static per machine, so it doesn't
+ * disturb prompt caching or the "same input, same output" guarantee.
+ */
+export function describeEnvironment(platform = process.platform) {
+  if (platform === "win32") {
+    return "## Environment\nOperating system: Windows. The run_bash tool executes commands with cmd.exe, not bash. Write Windows commands (dir, type, copy, del, findstr, where) and chain them with &&. POSIX tools such as ls, cat, grep, rm and export, and $VAR syntax, usually do not exist there. Prefer read_file, list_dir and search_code over shell commands for reading and searching.";
+  }
+  if (platform === "darwin") {
+    return "## Environment\nOperating system: macOS. The run_bash tool runs commands through a POSIX-style shell with the BSD userland (for example `sed -i ''` rather than GNU `sed -i`).";
+  }
+  if (platform === "linux") {
+    return "## Environment\nOperating system: Linux. The run_bash tool runs commands through a POSIX-style shell.";
+  }
+  return `## Environment\nOperating system: ${platform}.`;
+}
+
 export function buildSystemPrompt({
   projectContext,
   plannerOutput,
@@ -94,8 +113,9 @@ export function buildSystemPrompt({
   skillsIndexMode = "full",
   subagentsIndex,
   autonomousMode = false,
+  platform = process.platform,
 }) {
-  const parts = [BASE_TEMPLATE];
+  const parts = [BASE_TEMPLATE, describeEnvironment(platform)];
   if (adminPrompt) parts.push(renderAdminPrompt(adminPrompt));
   if (memory) parts.push(renderMemory(memory));
   if (skillsIndex) parts.push(renderSkillsIndex(skillsIndex, skillsIndexMode));
